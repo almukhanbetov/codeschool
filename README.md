@@ -19,9 +19,9 @@ Go Gin :8080  (modular monolith, no ORM)
 PostgreSQL 17 :5432 (container) / :5433 (host-mapped, see below)
 ```
 
-The catalog (`programs → levels → courses → modules → lessons`) is read-only. Auth and the **student learning flow** are in place: enrol → "My courses" → open lesson (starts progress) → do + submit the assignment → complete lesson → course progress recalculated in PostgreSQL, auto-completing the enrollment when every published lesson is done.
+The catalog (`programs → levels → courses → modules → lessons`) is read-only. Auth, the **student learning flow** (enrol → lesson progress → submit assignment → complete → recalculated course progress), and the **teacher flow** (groups → students → pending-review queue → score + feedback → passed/failed → resubmit) are all in place.
 
-This stage adds the **teacher flow**: a teacher opens their dashboard → sees their groups → opens a group → sees each student's progress → works the pending-review queue → opens a submission → reads the answer/code → sets a score + feedback → marks it **passed** or **failed**. A `failed` submission becomes editable again: the student revises it, **resubmits**, and it returns to the teacher's queue. No group/teacher CRUD, quiz engine, code execution or AI review — see [What's not in this stage](#whats-not-in-this-stage).
+This stage adds the **parent flow**: a parent opens their dashboard → sees their linked children → opens a child → sees that child's courses and progress → opens a course → sees lesson progress + every assignment with the **teacher's feedback** → checks the child's recent **activity timeline**. It is strictly **read-only** — every parent endpoint is a `GET`, and a parent can only ever see children linked to them. No parent-linking CRUD — links come from the dev seed / a future admin stage. See [What's not in this stage](#whats-not-in-this-stage).
 
 ## Project structure
 
@@ -141,6 +141,12 @@ GET  /api/v1/teacher/submissions            ?status=&group_id=&course_id=&page=&
 GET  /api/v1/teacher/submissions/:id
 POST /api/v1/teacher/submissions/:id/start-review    submitted → checking
 POST /api/v1/teacher/submissions/:id/review          {score?, feedback?, status: passed|failed}
+
+# parent flow (auth + role=parent) — read-only
+GET  /api/v1/parent/children
+GET  /api/v1/parent/children/:id
+GET  /api/v1/parent/children/:id/courses/:courseId    lesson progress + assignments + teacher feedback
+GET  /api/v1/parent/children/:id/activity             recent-activity timeline
 ```
 
 ## Frontend ↔ backend integration
@@ -180,10 +186,18 @@ POST /api/v1/teacher/submissions/:id/review          {score?, feedback?, status:
 - **`/teacher/submissions/[id]`** — the review screen: assignment (description / starter code / max points) beside the student's answer or code (monospace, **never executed**), then a score input + feedback textarea + **Pass** / **Needs work** buttons. Opening the page fires one `start-review` (`submitted → checking`); marking `failed` requires feedback (inline error, no `alert()`).
 - All `/teacher/*` app routes are wrapped in `RequireAuth roles={["teacher"]}`.
 
+## Parent flow on the frontend
+
+- `lib/api.ts` gains typed `getParentChildren`, `getParentChild`, `getParentChildCourse`, `getParentChildActivity` — same browser client + 401-refresh-retry, all read-only.
+- **`/parent`** — no longer a placeholder: the parent dashboard — a "read-only view" note + one card per linked child (name, course count, overall progress bar, `N in review` / `M needs work` badges).
+- **`/parent/children/[id]`** — the child: a card per enrolled course (status + progress bar → course detail) and a **recent-activity timeline** (completed lessons + submissions/reviews, newest first, colour-coded).
+- **`/parent/children/[id]/courses/[courseId]`** — lesson progress (✓/→/○) + one panel per assignment showing the child's submission badge and, when reviewed, the **teacher's feedback** in a pass/fail-coloured callout with the score.
+- All `/parent/*` routes wrapped in `RequireAuth roles={["parent"]}`. New strings live under `data/translations.ts` → `family`, RU + KZ + EN.
+
 Frontend route guards are a **UX** boundary; the backend authorization on every protected API call is the real security boundary.
 
 **Security trade-off note:** the refresh token is an HttpOnly, `SameSite=Lax` cookie scoped to `/api/v1/auth` (never in `localStorage`, never in a response body), and the access token is memory-only — so neither is readable by page JavaScript (XSS can't exfiltrate them). `Secure` is off in local development (plain HTTP) and on in production. Because the cookie lives on the API origin, Next.js middleware/`proxy` can't read it, so route protection is client-side only (see above).
 
 ## What's not in this stage
 
-Group / teacher / course CRUD (an admin stage — groups come from the dev seed), parent–child relations & the parent dashboard, quiz engine, code execution / sandboxing, AI review, certificates, payments, notifications, file storage (MinIO). Student code is stored, never run. **One current submission** per assignment: a resubmission overwrites it and clears the prior review — no per-attempt history. A `failed` verdict does not roll back a completed lesson (the UI flags "needs revision"). Refresh-token cleanup scheduling and login rate limiting remain future hardening. Deferred to later stages — see `backend/README.md`'s own scope note.
+Admin CRUD (groups, teachers, courses, **parent–child links** — an admin stage; all come from the dev seed for now), quiz engine, code execution / sandboxing, AI review, certificates, payments, notifications, file storage (MinIO). Student code is stored, never run. **One current submission** per assignment: a resubmission overwrites it and clears the prior review — no per-attempt history. A `failed` verdict does not roll back a completed lesson (the UI flags "needs revision"). The parent flow is read-only and its activity timeline shows the last 25 events (no pagination). Refresh-token cleanup scheduling and login rate limiting remain future hardening. Deferred to later stages — see `backend/README.md`'s own scope note.

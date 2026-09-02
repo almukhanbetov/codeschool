@@ -401,6 +401,39 @@ export interface TeachTranslations {
   notReviewable: string;
 }
 
+export interface FamilyTranslations {
+  dashTitle: string;
+  myChildren: string;
+  noChildren: string;
+  courses: string;
+  overallProgress: string;
+  pendingReview: string;
+  needsWork: string;
+  openChild: string;
+  backToChildren: string;
+  backToChild: string;
+  childCourses: string;
+  activity: string;
+  noActivity: string;
+  lessonProgress: string;
+  assignments: string;
+  lesson: string;
+  assignment: string;
+  score: string;
+  status: string;
+  teacherFeedback: string;
+  noSubmission: string;
+  awaitingReview: string;
+  viewCourse: string;
+  readOnlyNote: string;
+  loading: string;
+  loadError: string;
+  activityLessonCompleted: string;
+  activityAssignmentSubmitted: string;
+  activityAssignmentPassed: string;
+  activityAssignmentFailed: string;
+}
+
 export interface Translations {
   meta: { title: string };
   nav: NavTranslations;
@@ -409,6 +442,7 @@ export interface Translations {
   student: StudentTranslations;
   learn: LearnTranslations;
   teach: TeachTranslations;
+  family: FamilyTranslations;
   hero: HeroTranslations;
   path: PathTranslations;
   directions: DirectionsTranslations;
@@ -857,4 +891,85 @@ export interface TeacherSubmissionQuery {
   courseId?: number;
   page?: number;
   limit?: number;
+}
+
+/* ---- Parent flow (backend/internal/parents) — read-only ---- */
+
+export interface ChildBrief {
+  id: number;
+  firstName: string;
+  lastName: string | null;
+}
+
+export interface ChildCourseBrief {
+  id: number;
+  title: string;
+  slug: string;
+}
+
+export interface ChildProgressBrief {
+  completedLessons: number;
+  totalLessons: number;
+  progressPercent: number;
+}
+
+export interface ParentChildListItem {
+  child: ChildBrief;
+  coursesCount: number;
+  overallProgressPercent: number;
+  pendingReview: number;
+  needsWork: number;
+}
+
+export interface ParentChildCourseProgress {
+  course: ChildCourseBrief;
+  enrollmentStatus: "active" | "completed";
+  progress: ChildProgressBrief;
+}
+
+export interface ParentChildOverview {
+  child: ChildBrief;
+  courses: ParentChildCourseProgress[];
+}
+
+export interface ParentAssignmentFeedback {
+  assignmentId: number;
+  title: string;
+  lessonTitle: string;
+  assignmentType: AssignmentType;
+  points: number;
+  status: SubmissionStatus | "";
+  score: number | null;
+  teacherFeedback: string | null;
+  submittedAt: string | null;
+  checkedAt: string | null;
+}
+
+export interface ParentChildCourseDetail {
+  child: ChildBrief;
+  course: ChildCourseBrief;
+  progress: ChildProgressBrief;
+  lessons: TeacherLessonProgress[];
+  assignments: ParentAssignmentFeedback[];
+}
+
+export type ParentActivityType =
+  | "lesson_completed"
+  | "assignment_submitted"
+  | "assignment_passed"
+  | "assignment_failed";
+
+export interface ParentActivityItem {
+  type: ParentActivityType;
+  at: string;
+  courseTitle: string;
+  lessonTitle: string;
+  assignmentTitle: string | null;
+  score: number | null;
+  points: number | null;
+}
+
+export interface ParentActivitySummary {
+  child: ChildBrief;
+  items: ParentActivityItem[];
 }

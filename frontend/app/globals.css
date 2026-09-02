@@ -977,3 +977,31 @@ svg.lucide { display: inline-block; width: 1em; height: 1em; stroke-width: 2; }
 @media (max-width: 460px) {
   .teacher-cards { grid-template-columns: 1fr; }
 }
+
+/* =========================================================
+   Parent flow — child cards + activity timeline
+   (reuses student/teacher tokens; parent view is read-only)
+   ========================================================= */
+
+.family-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+
+.family-activity { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.family-activity-row {
+  display: grid; grid-template-columns: 190px 1fr auto; gap: 14px; align-items: baseline;
+  padding: 11px 14px; border: 1px solid var(--border); border-left: 3px solid var(--border-strong);
+  border-radius: 10px; background: var(--surface); font-size: 14px;
+}
+.family-activity-lesson_completed     { border-left-color: var(--success); }
+.family-activity-assignment_submitted { border-left-color: var(--accent-2); }
+.family-activity-assignment_passed    { border-left-color: var(--success); }
+.family-activity-assignment_failed    { border-left-color: var(--danger); }
+.family-activity-label { font-weight: 700; }
+.family-activity-detail { color: var(--text-secondary); min-width: 0; }
+.family-activity-date { color: var(--text-tertiary); font-size: 12.5px; white-space: nowrap; }
+
+.family-assignments { display: flex; flex-direction: column; gap: 14px; }
+
+@media (max-width: 640px) {
+  .family-activity-row { grid-template-columns: 1fr; gap: 4px; }
+  .family-activity-date { order: 3; }
+}

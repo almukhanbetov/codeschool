@@ -1,8 +1,8 @@
 # CODESCHOOL Backend
 
-Go + Gin + pgx/v5 (`pgxpool`) REST API over PostgreSQL 17. No ORM — plain, parameterized SQL. Modular monolith: one binary, one domain package per resource (`programs`, `levels`, `courses`, `modules`, `lessons`, `users`, `auth`, `enrollments`, `assignments`, `progress`, `submissions`, `groups`).
+Go + Gin + pgx/v5 (`pgxpool`) REST API over PostgreSQL 17. No ORM — plain, parameterized SQL. Modular monolith: one binary, one domain package per resource (`programs`, `levels`, `courses`, `modules`, `lessons`, `users`, `auth`, `enrollments`, `assignments`, `progress`, `submissions`, `groups`, `parents`).
 
-On top of the catalog + auth + student flow, this stage adds the **teacher flow**: a teacher's groups, the students in each group with their progress, a paginated submission-review queue, and the review verdict (`score` + `feedback` + `passed`/`failed`). A `failed` verdict makes the submission editable again so the student can revise and **resubmit**. No group/teacher CRUD (groups come from the dev seed), no quiz engine, no code execution, no AI review — see the root README.
+On top of the catalog + auth + student flow + teacher flow, this stage adds the **parent flow**: a strictly **read-only** view of a parent's linked children — each child's courses, lesson progress, assignments with the teacher's feedback (score / feedback / passed-failed), and a recent-activity timeline. A parent can only ever see children linked to them; every parent endpoint is a `GET`. No parent-linking CRUD (links come from the dev seed / a future admin action) — see the root README.
 
 ## Architecture
 
@@ -73,6 +73,12 @@ Teacher-flow tables (`00012`–`00013`) + one index (`00014`):
 
 **Resubmission (change vs the student stage):** a submission is now editable while `draft` **or** `failed`. Resubmitting (`failed → submitted`) clears the previous `score` / `teacher_feedback` / `checked_at`. Still **one current submission per (student, assignment)** — no attempt history yet.
 
+Parent-flow table (`00015`):
+
+| Table | Key rules |
+| --- | --- |
+| `parent_children` (`00015`) | composite `PRIMARY KEY (parent_id, child_id)`; `CHECK (parent_id <> child_id)`; both FK `→ users ON DELETE CASCADE`. **`parent_id` must be a `parent` and `child_id` a `student`** — no linking endpoint this stage, so enforced by the seed / a future admin action, not a trigger |
+
 ## Seed data (development only)
 
 Seeds are plain SQL, kept separate from migrations, and are **not** run automatically:
@@ -84,7 +90,7 @@ psql "$DATABASE_URL" -f seeds/dev_seed_users.sql  # dev users (see below)
 
 `dev_seed.sql` inserts one program ("Computer Science Kids"), one level, and 6 courses, plus 4 modules and 5 lessons under "Python Start". Safe to re-run — it upserts by slug.
 
-`dev_seed.sql` also seeds **3 assignments** (`code`, `code`, `text`) on the first three "Python Start" lessons, and — if `dev_seed_users.sql` has already run — **auto-enrols `student@codeschool.local` in "Python Start"**, creates the group **"Python Kids — Group 01"** (course Python Start, teacher `teacher@codeschool.local`, both dev students as members with guaranteed enrollment), and leaves **one `submitted` submission** (from `student2`) in the review queue. All idempotent. Re-running re-creates the module/lesson/assignment rows for that course (cascading away progress/submissions on them); it does **not** touch enrollments, groups, or other courses.
+`dev_seed.sql` also seeds **3 assignments** (`code`, `code`, `text`) on the first three "Python Start" lessons, and — if `dev_seed_users.sql` has already run — **auto-enrols `student@codeschool.local` in "Python Start"**, creates the group **"Python Kids — Group 01"** (course Python Start, teacher `teacher@codeschool.local`, both dev students as members with guaranteed enrollment), leaves **one `submitted` submission** (from `student2`) in the review queue, and **links `parent@codeschool.local` to both dev students**. All idempotent. Re-running re-creates the module/lesson/assignment rows for that course (cascading away progress/submissions on them); it does **not** touch enrollments, groups, parent links, or other courses.
 
 `dev_seed_users.sql` inserts five accounts, all with the password **`Password123!`** stored as a pre-computed bcrypt hash (the plain password is never in the SQL). **Development credentials only — do not use in production.**
 
@@ -173,6 +179,17 @@ Base path: `/api/v1`. Every success response is `{"data": ...}`; every error is 
 
 **Ownership.** Every teacher operation joins `submission → student → group_students → groups(course-matched) → teacher_id` (or the group equivalent) in SQL — teacher A can never read or review a submission of teacher B's group student, even with the id. Student profiles returned to teachers carry **no** password hash, tokens, phone, or email.
 
+### Parent flow (all require **auth + role `parent`**, all **read-only** GETs)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/v1/parent/children` | linked children + a rolled-up summary each: `{coursesCount, overallProgressPercent, pendingReview, needsWork}` (one query, nested LATERAL — no N+1) |
+| GET | `/api/v1/parent/children/:id` | one child: profile (safe fields) + per-enrolled-course progress. `404` for a missing child **or** one not linked to this parent — no existence leak |
+| GET | `/api/v1/parent/children/:id/courses/:courseId` | lesson progress + every published assignment with the child's submission state **and the teacher's feedback** (`score`, `teacherFeedback`, `submittedAt`, `checkedAt`). `404` if the child is not enrolled in that course |
+| GET | `/api/v1/parent/children/:id/activity` | recent-activity timeline (≤25) — completed lessons + non-draft submissions merged, newest first |
+
+**Ownership.** Every parent operation first checks `parent_children(parent_id = <token>, child_id = :id)`; an unlinked child yields `404` before any child data is touched. A different parent sees an empty `/children` list and `404` on someone else's child. Child payloads carry **no** password hash, tokens, phone, or email. There are **no** `POST` / `PUT` / `DELETE` routes under `/parent`.
+
 ### Auth model
 
 - **Access token** — signed JWT (HS256), `sub` = user id, `role`, `iat`, `exp`; 15-min TTL. Sent as `Authorization: Bearer <token>`. Never carries the password hash.
@@ -214,20 +231,21 @@ go test ./...
 go build ./cmd/api
 ```
 
-`go test ./...` runs without a database. The `courses`, `auth`, `enrollments`, `assignments`, `submissions`, `progress` and `groups` service tests use in-memory fake repositories — they cover enrollment (success / duplicate / unpublished / only-own-courses), the lesson-completion gate, the progress `Percent()` calc (incl. divide-by-zero), and — for this stage — the review flow (`submitted → checking → passed/failed`, `start-review` idempotency, score ≤ points, score required when points > 0, feedback required for `failed`, `passed` cannot be re-reviewed), the resubmission rules (`failed` editable + clears review on resubmit, `checking`/`passed` locked), and teacher ownership gates (own group / not another teacher's, own group's student / not an unrelated student, own group's submissions only, cannot review an unrelated submission, pagination clamp).
+`go test ./...` runs without a database. The `courses`, `auth`, `enrollments`, `assignments`, `submissions`, `progress`, `groups` and `parents` service tests use in-memory fake repositories — they cover enrollment (success / duplicate / unpublished / only-own-courses), the lesson-completion gate, the progress `Percent()` calc (incl. divide-by-zero), the review flow (`submitted → checking → passed/failed`, `start-review` idempotency, score ≤ points, score required when points > 0, feedback required for `failed`, `passed` cannot be re-reviewed), the resubmission rules (`failed` editable + clears review on resubmit, `checking`/`passed` locked), teacher ownership gates (own group / not another teacher's, own group's student / not an unrelated student, own group's submissions only, cannot review an unrelated submission, pagination clamp), and — for this stage — the **parent link gate** (a linked child is readable; an unlinked or non-existent child yields `ErrChildNotFound` and the repo is never touched; a different parent sees only their own children).
 
 The `auth` suite additionally covers password hashing, JWT sign/verify/expiry, register validation (duplicate email/phone, `admin` rejected, short password), login (wrong password, no user enumeration, inactive rejected), refresh rotation + reuse/revoked/expired rejection, logout idempotency, and the JWT/role middleware (expired token, inactive user, student → `/admin/ping` = 403).
 
-Three integration tests run against a real Postgres — skipped unless `TEST_DATABASE_URL` is set. Each inserts and cleans up its own throwaway fixtures and does not touch seed data:
+Four integration tests run against a real Postgres — skipped unless `TEST_DATABASE_URL` is set. Each inserts and cleans up its own throwaway fixtures and does not touch seed data:
 
 ```bash
 TEST_DATABASE_URL=postgres://codeschool:codeschool@localhost:5432/codeschool?sslmode=disable \
-  go test ./internal/courses/... ./internal/progress/... ./internal/groups/... -run Repository -v
+  go test ./internal/courses/... ./internal/progress/... ./internal/groups/... ./internal/parents/... -run Repository -v
 ```
 
 - `courses` — the *published-only* filter on `GET /courses`.
 - `progress` — the lesson-completion transaction (recount + enrollment auto-complete + `lesson_progress` uniqueness).
 - `groups` — `AddStudentTx` (creates the enrollment, enforces `max_students`, blocks duplicates, rejects non-students) and the ownership joins (teacher A ≠ teacher B for groups, students, and submissions).
+- `parents` — `IsLinked` gate (parent A ≠ parent B), the `ListChildren` roll-up aggregates, `ChildCourseDetail` surfacing the teacher's `score`/`feedback`, `ErrCourseNotFound` for an un-enrolled course, and the newest-first activity timeline.
 
 ## Logging & shutdown
 
@@ -235,4 +253,4 @@ Startup logs `database connected` and `server listening on :PORT` — never secr
 
 ## Not in this stage
 
-Group / teacher / course CRUD (groups come from the dev seed; a teacher works only their existing groups), parent–child links, quiz engine, code execution / sandboxing, AI review, certificates, payments, notifications — see the root README. Student code is **stored only**, never executed. Submissions keep **one current row** per (student, assignment) — a resubmission overwrites it and clears the prior review; per-attempt history is future work. If a lesson was completed and the teacher later marks its assignment `failed`, the lesson progress is **not** rolled back (the UI shows "needs revision" instead) — a stricter mastery workflow is future work. Refresh-token cleanup and login rate limiting remain noted as future hardening.
+Admin CRUD (groups, teachers, courses, **parent–child links** — all come from the dev seed or a future admin stage), quiz engine, code execution / sandboxing, AI review, certificates, payments, notifications — see the root README. Student code is **stored only**, never executed. Submissions keep **one current row** per (student, assignment) — a resubmission overwrites it and clears the prior review; per-attempt history is future work. If a lesson was completed and the teacher later marks its assignment `failed`, the lesson progress is **not** rolled back (the UI shows "needs revision" instead) — a stricter mastery workflow is future work. The parent flow is read-only and has no activity pagination yet (last 25 events). Refresh-token cleanup and login rate limiting remain noted as future hardening.

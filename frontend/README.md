@@ -125,8 +125,16 @@ One necessary substitution: `lucide-react` no longer ships branded logo icons (I
 - **`/teacher/submissions`** (`TeacherSubmissions`) — status tabs + pagination; the `?status=` from the dashboard's "pending" card is the initial tab.
 - **`/teacher/submissions/[id]`** (`TeacherReview`) — two-column assignment/answer view (monospace for `code`), score + feedback + Pass / Needs-work. One `start-review` on open; `failed` requires feedback (inline error).
 - All `/teacher/*` routes wrapped in `RequireAuth roles={["teacher"]}`.
-- New CSS is appended to `globals.css` (existing tokens only). New strings live under `data/translations.ts` → `student` / `learn` / `teach`, RU + KZ + EN. API status values are never translated.
+
+## Parent flow (read-only)
+
+- **`lib/api.ts`** — typed `getParentChildren`, `getParentChild`, `getParentChildCourse`, `getParentChildActivity`. All `GET`; same 401-refresh-retry.
+- **`/parent`** (`components/parent/ParentDashboard.tsx`) — no longer a placeholder: a read-only-view note + a card per linked child (progress bar + `in review` / `needs work` badges).
+- **`/parent/children/[id]`** (`ParentChildDetail`) — course cards (→ course detail) + a colour-coded recent-activity timeline (`ParentActivityItem`).
+- **`/parent/children/[id]/courses/[courseId]`** (`ParentChildCourse`) — lesson progress list + an assignment panel each, showing the submission badge and the teacher's feedback in a pass/fail-coloured `review-result` callout.
+- All `/parent/*` routes wrapped in `RequireAuth roles={["parent"]}`.
+- New CSS is appended to `globals.css` (existing tokens only). New strings live under `data/translations.ts` → `student` / `learn` / `teach` / `family`, RU + KZ + EN. API status values are never translated.
 
 ## Placeholder routes
 
-`/courses`, `/parent`, `/admin` use the same `.placeholder-*` visual language as the rest of the site.
+`/courses` and `/admin` use the same `.placeholder-*` visual language as the rest of the site.

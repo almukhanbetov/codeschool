@@ -23,6 +23,7 @@ import (
 	"codeschool/backend/internal/levels"
 	"codeschool/backend/internal/middleware"
 	"codeschool/backend/internal/modules"
+	"codeschool/backend/internal/parents"
 	"codeschool/backend/internal/programs"
 	"codeschool/backend/internal/progress"
 	"codeschool/backend/internal/submissions"
@@ -120,6 +121,11 @@ func run() error {
 	groupsService := groups.NewService(groupsRepo, submissionsService)
 	groupsHandler := groups.NewHandler(groupsService)
 
+	// Parent flow: read-only view of linked children.
+	parentsRepo := parents.NewRepository(pool)
+	parentsService := parents.NewService(parentsRepo)
+	parentsHandler := parents.NewHandler(parentsService)
+
 	apiV1 := router.Group("/api/v1")
 	programs.RegisterRoutes(apiV1, programsHandler)
 	levels.RegisterRoutes(apiV1, levelsHandler)
@@ -148,6 +154,12 @@ func run() error {
 	teacher := protected.Group("")
 	teacher.Use(auth.RequireRole("teacher"))
 	groups.RegisterRoutes(teacher, groupsHandler)
+
+	// Parent-only endpoints — valid access token + role == "parent". Every
+	// route is read-only (GET).
+	parent := protected.Group("")
+	parent.Use(auth.RequireRole("parent"))
+	parents.RegisterRoutes(parent, parentsHandler)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

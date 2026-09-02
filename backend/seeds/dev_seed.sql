@@ -268,4 +268,15 @@ JOIN lessons l ON l.id = a.lesson_id AND l.slug = 'usloviya-if'
 JOIN users s ON s.email = 'student2@codeschool.local'
 ON CONFLICT (student_id, assignment_id) DO NOTHING;
 
+-- ---------- Parent → children links ----------
+-- Bekzat (parent) is linked to both dev students. No-op if dev_seed_users.sql
+-- has not run yet; idempotent (composite PK). The role guards make sure the
+-- link is always parent → student.
+INSERT INTO parent_children (parent_id, child_id)
+SELECT p.id, s.id
+FROM users p
+JOIN users s ON s.email IN ('student@codeschool.local', 'student2@codeschool.local') AND s.role = 'student'
+WHERE p.email = 'parent@codeschool.local' AND p.role = 'parent'
+ON CONFLICT (parent_id, child_id) DO NOTHING;
+
 COMMIT;

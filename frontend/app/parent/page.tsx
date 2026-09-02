@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { RequireAuth } from "@/components/auth/RequireAuth";
-import { RoleDashboard } from "@/components/sections/RoleDashboard";
+import { ParentDashboard } from "@/components/parent/ParentDashboard";
 
 export const metadata: Metadata = {
   title: "Parent — CODESCHOOL",
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function ParentPage() {
   return (
     <RequireAuth roles={["parent"]}>
-      <RoleDashboard role="parent" />
+      <ParentDashboard />
     </RequireAuth>
   );
 }

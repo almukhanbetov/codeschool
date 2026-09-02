@@ -35,6 +35,10 @@ import type {
   TeacherSubmissionDetail,
   TeacherSubmissionListItem,
   TeacherSubmissionQuery,
+  ParentChildListItem,
+  ParentChildOverview,
+  ParentChildCourseDetail,
+  ParentActivitySummary,
 } from "@/types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
@@ -406,6 +410,34 @@ export function reviewSubmission(
   return browserFetch<TeacherSubmissionDetail>(`/teacher/submissions/${id}/review`, {
     method: "POST",
     body: JSON.stringify(body),
+    auth: true,
+  });
+}
+
+/* =========================================================
+   Parent flow — browser-side, read-only, require a parent token.
+   ========================================================= */
+
+export function getParentChildren(): Promise<ParentChildListItem[]> {
+  return browserFetch<ParentChildListItem[]>("/parent/children", { auth: true });
+}
+
+export function getParentChild(childId: number): Promise<ParentChildOverview> {
+  return browserFetch<ParentChildOverview>(`/parent/children/${childId}`, { auth: true });
+}
+
+export function getParentChildCourse(
+  childId: number,
+  courseId: number
+): Promise<ParentChildCourseDetail> {
+  return browserFetch<ParentChildCourseDetail>(
+    `/parent/children/${childId}/courses/${courseId}`,
+    { auth: true }
+  );
+}
+
+export function getParentChildActivity(childId: number): Promise<ParentActivitySummary> {
+  return browserFetch<ParentActivitySummary>(`/parent/children/${childId}/activity`, {
     auth: true,
   });
 }
