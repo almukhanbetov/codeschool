@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-codeschool}
+      POSTGRES_USER: ${POSTGRES_USER:-codeschool}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codeschool}
+    ports:
+      # Host port 5433 (not 5432) so this doesn't collide with a Postgres
+      # already running on the host. Only relevant if you connect from the
+      # host itself (psql, goose run locally); containers always talk to
+      # each other over the internal network on 5432.
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-codeschool} -d ${POSTGRES_DB:-codeschool}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ./backend
+    entrypoint: ["goose", "-dir", "migrations", "postgres"]
+    command: ["${DATABASE_URL:-postgres://codeschool:codeschool@postgres:5432/codeschool?sslmode=disable}", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      PORT: 8080
+      DATABASE_URL: ${DATABASE_URL:-postgres://codeschool:codeschool@postgres:5432/codeschool?sslmode=disable}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-720h}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Server-side API calls (Server Components) run *inside* the frontend
+        # container — this must resolve on the Docker network (the "backend"
+        # service name), not "localhost" (which inside a container means the
+        # container itself). "localhost:8080" is only correct for a non-Docker
+        # `npm run dev`/`npm run build` on the host — see frontend/.env.example.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:8080/api/v1}
+        # Auth calls run in the browser (so the HttpOnly refresh cookie works),
+        # so this URL must be reachable from the user's machine.
+        NEXT_PUBLIC_BROWSER_API_URL: ${NEXT_PUBLIC_BROWSER_API_URL:-http://localhost:8080/api/v1}
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

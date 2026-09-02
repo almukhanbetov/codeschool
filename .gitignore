@@ -1,0 +1,38 @@
+# --- dependencies ---
+node_modules/
+.pnp
+.pnp.*
+
+# --- Next.js / build output ---
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# --- Go build output ---
+/backend/api
+/backend/dist/
+*.test
+*.out
+
+# --- environment (keep *.env.example, ignore real values) ---
+.env
+.env.local
+.env.*.local
+*.local.env
+
+# --- logs ---
+*-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- agent / editor / OS ---
+.claude/
+.vercel
+.DS_Store
+*.pem
+*.swp
+.idea/
+.vscode/

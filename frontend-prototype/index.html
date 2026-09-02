@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CODESCHOOL — Учись создавать технологии будущего</title>
+<meta name="description" content="Современная образовательная IT-платформа для детей, подростков и преподавателей Казахстана: программирование, робототехника, искусственный интеллект.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.462.0/dist/umd/lucide.min.js" defer></script>
+<script src="script.js" defer></script>
+</head>
+<body>
+
+<a href="#main" class="skip-link">Перейти к содержимому</a>
+
+<!-- ============ HEADER ============ -->
+<header class="site-header" id="site-header">
+  <div class="container header-inner">
+    <a href="#hero" class="logo" aria-label="CODESCHOOL — на главную">
+      <span class="logo-mark" aria-hidden="true">
+        <i data-lucide="code-xml"></i>
+      </span>
+      <span class="logo-text">CODESCHOOL</span>
+    </a>
+
+    <nav class="main-nav" aria-label="Основная навигация">
+      <a href="#hero" class="nav-link" data-i18n="nav.home">Главная</a>
+      <a href="#directions" class="nav-link" data-i18n="nav.directions">Направления</a>
+      <a href="#courses" class="nav-link" data-i18n="nav.courses">Курсы</a>
+      <a href="#children" class="nav-link" data-i18n="nav.children">Детям</a>
+      <a href="#teachers" class="nav-link" data-i18n="nav.teachers">Преподавателям</a>
+      <a href="#parents" class="nav-link" data-i18n="nav.parents">Родителям</a>
+      <a href="#projects" class="nav-link" data-i18n="nav.projects">Проекты</a>
+      <a href="#about" class="nav-link" data-i18n="nav.about">О платформе</a>
+    </nav>
+
+    <div class="header-actions">
+      <div class="lang-switch" role="group" aria-label="Выбор языка">
+        <button type="button" class="lang-btn" data-lang="kz">KZ</button>
+        <button type="button" class="lang-btn" data-lang="ru">RU</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
+
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Переключить тему" aria-pressed="false">
+        <i data-lucide="sun" class="icon-sun"></i>
+        <i data-lucide="moon" class="icon-moon"></i>
+      </button>
+
+      <a href="#" class="btn btn-ghost btn-sm header-login" data-i18n="header.login">Войти</a>
+      <a href="#courses" class="btn btn-primary btn-sm header-cta" data-i18n="header.cta">Начать обучение</a>
+
+      <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Открыть меню" aria-expanded="false">
+        <i data-lucide="menu"></i>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ============ MOBILE DRAWER ============ -->
+<div class="mobile-drawer" id="mobile-drawer">
+  <div class="mobile-drawer-header">
+    <span class="logo-text">CODESCHOOL</span>
+    <button type="button" class="mobile-drawer-close" id="mobile-drawer-close" aria-label="Закрыть меню">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+  <nav class="mobile-nav" aria-label="Мобильная навигация">
+    <a href="#hero" class="mobile-nav-link" data-i18n="nav.home">Главная</a>
+    <a href="#directions" class="mobile-nav-link" data-i18n="nav.directions">Направления</a>
+    <a href="#courses" class="mobile-nav-link" data-i18n="nav.courses">Курсы</a>
+    <a href="#children" class="mobile-nav-link" data-i18n="nav.children">Детям</a>
+    <a href="#teachers" class="mobile-nav-link" data-i18n="nav.teachers">Преподавателям</a>
+    <a href="#parents" class="mobile-nav-link" data-i18n="nav.parents">Родителям</a>
+    <a href="#projects" class="mobile-nav-link" data-i18n="nav.projects">Проекты</a>
+    <a href="#about" class="mobile-nav-link" data-i18n="nav.about">О платформе</a>
+  </nav>
+  <div class="mobile-drawer-actions">
+    <a href="#" class="btn btn-ghost" data-i18n="header.login">Войти</a>
+    <a href="#courses" class="btn btn-primary" data-i18n="header.cta">Начать обучение</a>
+  </div>
+</div>
+<div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop"></div>
+
+<main id="main">
+
+<!-- ============ HERO ============ -->
+<section class="hero" id="hero">
+  <div class="hero-bg" aria-hidden="true">
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+    <div class="glow glow-3"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <div class="container hero-inner">
+    <div class="hero-content reveal">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        <span data-i18n="hero.badge">Образовательная платформа нового поколения</span>
+      </div>
+
+      <h1 class="hero-title">
+        <span data-i18n="hero.title1">Учись создавать</span><br>
+        <span class="gradient-text" data-i18n="hero.title2">технологии будущего</span>
+      </h1>
+
+      <p class="hero-subtitle" data-i18n="hero.subtitle">Программирование, робототехника и искусственный интеллект для нового поколения Казахстана.</p>
+      <p class="hero-extra" data-i18n="hero.extra">От первого алгоритма до собственного IT-продукта.</p>
+
+      <div class="hero-cta-row">
+        <a href="#courses" class="btn btn-primary btn-lg">
+          <span data-i18n="hero.cta1">Начать обучение</span>
+          <i data-lucide="arrow-right"></i>
+        </a>
+        <a href="#teachers" class="btn btn-secondary btn-lg" data-i18n="hero.cta2">Стать преподавателем</a>
+      </div>
+
+      <div class="hero-trust">
+        <div class="trust-item">
+          <i data-lucide="users"></i>
+          <span data-i18n="hero.trust1">6–17 лет</span>
+        </div>
+        <div class="trust-item">
+          <i data-lucide="languages"></i>
+          <span data-i18n="hero.trust2">3 языка</span>
+        </div>
+        <div class="trust-item">
+          <i data-lucide="hammer"></i>
+          <span data-i18n="hero.trust3">Практические проекты</span>
+        </div>
+        <div class="trust-item">
+          <i data-lucide="sparkles"></i>
+          <span data-i18n="hero.trust4">AI-наставник</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-visual reveal" aria-hidden="true">
+      <div class="float-card card-python">
+        <div class="float-card-head">
+          <i data-lucide="file-code-2"></i>
+          <span>Python</span>
+        </div>
+        <pre class="code-block"><code><span class="tok-kw">for</span> i <span class="tok-kw">in</span> <span class="tok-fn">range</span>(<span class="tok-num">5</span>):
+    <span class="tok-fn">print</span>(<span class="tok-str">"Hello"</span>)</code></pre>
+      </div>
+
+      <div class="float-card card-robotics">
+        <div class="float-card-head">
+          <i data-lucide="cpu"></i>
+          <span>Robotics</span>
+        </div>
+        <ul class="chip-list">
+          <li>Arduino</li>
+          <li>Sensors</li>
+        </ul>
+      </div>
+
+      <div class="float-card card-ai">
+        <div class="float-card-head">
+          <i data-lucide="brain-circuit"></i>
+          <span>AI</span>
+        </div>
+        <ul class="chip-list">
+          <li>Machine Learning</li>
+        </ul>
+      </div>
+
+      <div class="float-card card-progress">
+        <div class="float-card-head">
+          <span>Python Basics</span>
+          <span class="progress-percent">72%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:72%"></div>
+        </div>
+      </div>
+
+      <div class="hero-orbit-ring" aria-hidden="true"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LEARNING PATH ============ -->
+<section class="section path-section" id="path">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="eyebrow" data-i18n="path.eyebrow">Траектория обучения</span>
+      <h2 data-i18n="path.title">Путь ученика</h2>
+      <p data-i18n="path.subtitle">От первых алгоритмов до собственного стартапа — шесть последовательных ступеней роста.</p>
+    </div>
+
+    <div class="path-track">
+      <div class="path-stage reveal">
+        <div class="path-stage-age">6–8</div>
+        <div class="path-stage-card">
+          <i data-lucide="puzzle"></i>
+          <h3 data-i18n="path.stage1">Алгоритмы</h3>
+        </div>
+      </div>
+      <div class="path-arrow" aria-hidden="true"><i data-lucide="chevron-right"></i></div>
+
+      <div class="path-stage reveal">
+        <div class="path-stage-age">8–10</div>
+        <div class="path-stage-card">
+          <i data-lucide="shapes"></i>
+          <h3 data-i18n="path.stage2">Scratch</h3>
+        </div>
+      </div>
+      <div class="path-arrow" aria-hidden="true"><i data-lucide="chevron-right"></i></div>
+
+      <div class="path-stage reveal">
+        <div class="path-stage-age">10–12</div>
+        <div class="path-stage-card">
+          <i data-lucide="file-code-2"></i>
+          <h3 data-i18n="path.stage3">Python</h3>
+        </div>
+      </div>
+      <div class="path-arrow" aria-hidden="true"><i data-lucide="chevron-right"></i></div>
+
+      <div class="path-stage reveal">
+        <div class="path-stage-age">12–14</div>
+        <div class="path-stage-card">
+          <i data-lucide="globe"></i>
+          <h3 data-i18n="path.stage4">Web + Robotics</h3>
+        </div>
+      </div>
+      <div class="path-arrow" aria-hidden="true"><i data-lucide="chevron-right"></i></div>
+
+      <div class="path-stage reveal">
+        <div class="path-stage-age">14–16</div>
+        <div class="path-stage-card">
+          <i data-lucide="server"></i>
+          <h3 data-i18n="path.stage5">Backend + Mobile</h3>
+        </div>
+      </div>
+      <div class="path-arrow" aria-hidden="true"><i data-lucide="chevron-right"></i></div>
+
+      <div class="path-stage reveal">
+        <div class="path-stage-age">16–18</div>
+        <div class="path-stage-card path-stage-final">
+          <i data-lucide="rocket"></i>
+          <h3 data-i18n="path.stage6">AI + Startup</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DIRECTIONS ============ -->
+<section class="section directions-section" id="directions">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="eyebrow" data-i18n="directions.eyebrow">Что можно изучать</span>
+      <h2 data-i18n="directions.title">Направления обучения</h2>
+      <p data-i18n="directions.subtitle">Шесть технологических направлений — от первых строк кода до создания собственных продуктов.</p>
+    </div>
+
+    <div class="directions-grid">
+      <article class="direction-card dc-1 reveal">
+        <i data-lucide="terminal-square" class="direction-icon"></i>
+        <h3 data-i18n="directions.card1.title">Programming</h3>
+        <ul class="tag-list">
+          <li>Python</li><li>JavaScript</li><li>Go</li><li data-i18n="directions.card1.tag4">Алгоритмы</li>
+        </ul>
+      </article>
+
+      <article class="direction-card dc-2 reveal">
+        <i data-lucide="globe-2" class="direction-icon"></i>
+        <h3 data-i18n="directions.card2.title">Web Development</h3>
+        <ul class="tag-list">
+          <li>HTML</li><li>CSS</li><li>JavaScript</li><li data-i18n="directions.card2.tag4">Frontend / Backend</li>
+        </ul>
+      </article>
+
+      <article class="direction-card dc-3 reveal">
+        <i data-lucide="bot" class="direction-icon"></i>
+        <h3 data-i18n="directions.card3.title">Robotics</h3>
+        <ul class="tag-list">
+          <li>Arduino</li><li data-i18n="directions.card3.tag2">Сенсоры</li><li data-i18n="directions.card3.tag3">Электроника</li><li data-i18n="directions.card3.tag4">Автоматика</li>
+        </ul>
+      </article>
+
+      <article class="direction-card dc-4 reveal">
+        <i data-lucide="brain-circuit" class="direction-icon"></i>
+        <h3 data-i18n="directions.card4.title">Artificial Intelligence</h3>
+        <ul class="tag-list">
+          <li>AI</li><li>Machine Learning</li><li data-i18n="directions.card4.tag3">Prompt Engineering</li><li data-i18n="directions.card4.tag4">Computer Vision</li>
+        </ul>
+      </article>
+
+      <article class="direction-card dc-5 reveal">
+        <i data-lucide="smartphone" class="direction-icon"></i>
+        <h3 data-i18n="directions.card5.title">Mobile</h3>
+        <ul class="tag-list">
+          <li>Flutter</li><li data-i18n="directions.card5.tag2">Mobile-приложения</li><li>UI</li><li>API</li>
+        </ul>
+      </article>
+
+      <article class="direction-card dc-6 reveal">
+        <i data-lucide="gamepad-2" class="direction-icon"></i>
+        <h3 data-i18n="directions.card6.title">Game Development</h3>
+        <ul class="tag-list">
+          <li>Scratch</li><li data-i18n="directions.card6.tag2">Игровая логика</li><li data-i18n="directions.card6.tag3">2D-игры</li><li data-i18n="directions.card6.tag4">Проекты</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COURSES ============ -->
+<section class="section courses-section" id="courses">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="eyebrow" data-i18n="courses.eyebrow">Программы обучения</span>
+      <h2 data-i18n="courses.title">Популярные программы</h2>
+      <p data-i18n="courses.subtitle">Выберите программу по возрасту и начните путь в технологии уже сегодня.</p>
+    </div>
+
+    <div class="filter-tabs" role="tablist" aria-label="Фильтр курсов по возрасту">
+      <button class="filter-tab active" data-filter="all" data-i18n="filter.all">Все</button>
+      <button class="filter-tab" data-filter="6-8" data-i18n="filter.a1">6–8 лет</button>
+      <button class="filter-tab" data-filter="8-10" data-i18n="filter.a2">8–10 лет</button>
+      <button class="filter-tab" data-filter="10-12" data-i18n="filter.a3">10–12 лет</button>
+      <button class="filter-tab" data-filter="12-14" data-i18n="filter.a4">12–14 лет</button>
+      <button class="filter-tab" data-filter="14-17" data-i18n="filter.a5">14–17 лет</button>
+    </div>
+
+    <div class="course-grid">
+      <article class="course-card reveal" data-age="8-10">
+        <div class="course-tag ct-scratch">Scratch</div>
+        <h3 data-i18n="course.scratch.title">Scratch Junior</h3>
+        <div class="course-meta">
+          <span><i data-lucide="cake"></i><span data-i18n="course.age">Возраст:</span> 8–10 <span data-i18n="course.years">лет</span></span>
+          <span><i data-lucide="book-open"></i>20 <span data-i18n="course.lessons">уроков</span></span>
+          <span><i data-lucide="folder-kanban"></i>10 <span data-i18n="course.projects">проектов</span></span>
+        </div>
+        <div class="course-level" data-i18n="course.levelBeginner">Начальный уровень</div>
+        <a href="#" class="btn btn-ghost btn-sm course-btn" data-i18n="course.more">Подробнее</a>
+      </article>
+
+      <article class="course-card reveal" data-age="10-12">
+        <div class="course-tag ct-python">Python</div>
+        <h3 data-i18n="course.python.title">Python Start</h3>
+        <div class="course-meta">
+          <span><i data-lucide="cake"></i><span data-i18n="course.age">Возраст:</span> 10–12 <span data-i18n="course.years">лет</span></span>
+          <span><i data-lucide="book-open"></i>24 <span data-i18n="course.lessons">уроков</span></span>
+          <span><i data-lucide="folder-kanban"></i>12 <span data-i18n="course.projects">проектов</span></span>
+        </div>
+        <div class="course-level" data-i18n="course.levelBeginner">Начальный уровень</div>
+        <a href="#" class="btn btn-ghost btn-sm course-btn" data-i18n="course.more">Подробнее</a>
+      </article>
+
+      <article class="course-card reveal" data-age="12-14">
+        <div class="course-tag ct-robotics">Arduino</div>
+        <h3 data-i18n="course.robotics.title">Robotics Arduino</h3>
+        <div class="course-meta">
+          <span><i data-lucide="cake"></i><span data-i18n="course.age">Возраст:</span> 12–14 <span data-i18n="course.years">лет</span></span>
+          <span><i data-lucide="book-open"></i>22 <span data-i18n="course.lessons">уроков</span></span>
+          <span><i data-lucide="folder-kanban"></i>9 <span data-i18n="course.projects">проектов</span></span>
+        </div>
+        <div class="course-level" data-i18n="course.levelMiddle">Средний уровень</div>
+        <a href="#" class="btn btn-ghost btn-sm course-btn" data-i18n="course.more">Подробнее</a>
+      </article>
+
+      <article class="course-card reveal" data-age="12-14">
+        <div class="course-tag ct-web">Web</div>
+        <h3 data-i18n="course.web.title">Web Developer</h3>
+        <div class="course-meta">
+          <span><i data-lucide="cake"></i><span data-i18n="course.age">Возраст:</span> 12–14 <span data-i18n="course.years">лет</span></span>
+          <span><i data-lucide="book-open"></i>28 <span data-i18n="course.lessons">уроков</span></span>
+          <span><i data-lucide="folder-kanban"></i>14 <span data-i18n="course.projects">проектов</span></span>
+        </div>
+        <div class="course-level" data-i18n="course.levelMiddle">Средний уровень</div>
+        <a href="#" class="btn btn-ghost btn-sm course-btn" data-i18n="course.more">Подробнее</a>
+      </article>
+
+      <article class="course-card reveal" data-age="14-17">
+        <div class="course-tag ct-ai">AI</div>
+        <h3 data-i18n="course.ai.title">AI Junior</h3>
+        <div class="course-meta">
+          <span><i data-lucide="cake"></i><span data-i18n="course.age">Возраст:</span> 14–17 <span data-i18n="course.years">лет</span></span>
+          <span><i data-lucide="book-open"></i>26 <span data-i18n="course.lessons">уроков</span></span>
+          <span><i data-lucide="folder-kanban"></i>11 <span data-i18n="course.projects">проектов</span></span>
+        </div>
+        <div class="course-level" data-i18n="course.levelAdvanced">Продвинутый уровень</div>
+        <a href="#" class="btn btn-ghost btn-sm course-btn" data-i18n="course.more">Подробнее</a>
+      </article>
+
+      <article class="course-card reveal" data-age="6-8">
+        <div class="course-tag ct-game">Game</div>
+        <h3 data-i18n="course.game.title">Game Creator</h3>
+        <div class="course-meta">
+          <span><i data-lucide="cake"></i><span data-i18n="course.age">Возраст:</span> 6–8 <span data-i18n="course.years">лет</span></span>
+          <span><i data-lucide="book-open"></i>18 <span data-i18n="course.lessons">уроков</span></span>
+          <span><i data-lucide="folder-kanban"></i>8 <span data-i18n="course.projects">проектов</span></span>
+        </div>
+        <div class="course-level" data-i18n="course.levelBeginner">Начальный уровень</div>
+        <a href="#" class="btn btn-ghost btn-sm course-btn" data-i18n="course.more">Подробнее</a>
+      </article>
+    </div>
+
+    <p class="filter-empty" id="filter-empty" hidden data-i18n="filter.empty">Курсов в этой категории пока нет.</p>
+  </div>
+</section>
+
+<!-- ============ CHILDREN ============ -->
+<section class="section children-section" id="children">
+  <div class="container children-inner">
+    <div class="children-text reveal">
+      <span class="eyebrow" data-i18n="children.eyebrow">Для детей</span>
+      <h2 data-i18n="children.title">Для детей</h2>
+      <p class="children-lead" data-i18n="children.lead1">Не теория ради теории.</p>
+      <p class="children-lead-strong" data-i18n="children.lead2">Каждый новый навык превращается в настоящий проект.</p>
+    </div>
+
+    <div class="children-gallery">
+      <div class="example-chip reveal"><i data-lucide="gamepad-2"></i><span data-i18n="children.ex1">Своя игра</span></div>
+      <div class="example-chip reveal"><i data-lucide="layout-template"></i><span data-i18n="children.ex2">Свой сайт</span></div>
+      <div class="example-chip reveal"><i data-lucide="bot"></i><span data-i18n="children.ex3">Собственный робот</span></div>
+      <div class="example-chip reveal"><i data-lucide="send"></i><span data-i18n="children.ex4">Telegram bot</span></div>
+      <div class="example-chip reveal"><i data-lucide="smartphone"></i><span data-i18n="children.ex5">Mobile app</span></div>
+      <div class="example-chip reveal"><i data-lucide="sparkles"></i><span data-i18n="children.ex6">AI project</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PROJECTS ============ -->
+<section class="section projects-section" id="projects">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="eyebrow" data-i18n="projects.eyebrow">Работы учеников</span>
+      <h2 data-i18n="projects.title">Проекты учеников</h2>
+      <p data-i18n="projects.subtitle">Реальные проекты, созданные учениками платформы в рамках практических курсов.</p>
+    </div>
+
+    <div class="projects-grid">
+      <article class="project-card reveal">
+        <div class="project-thumb pt-1" aria-hidden="true"><i data-lucide="sprout"></i></div>
+        <div class="project-body">
+          <h3 data-i18n="projects.p1.title">Smart Greenhouse</h3>
+          <div class="project-meta">
+            <span class="project-tech">Arduino</span>
+            <span data-i18n="projects.p1.age">12 лет</span>
+          </div>
+          <p data-i18n="projects.p1.desc">Автоматическая теплица с датчиками влажности и температуры.</p>
+        </div>
+      </article>
+
+      <article class="project-card reveal">
+        <div class="project-thumb pt-2" aria-hidden="true"><i data-lucide="rocket"></i></div>
+        <div class="project-body">
+          <h3 data-i18n="projects.p2.title">Space Game</h3>
+          <div class="project-meta">
+            <span class="project-tech">Scratch</span>
+            <span data-i18n="projects.p2.age">9 лет</span>
+          </div>
+          <p data-i18n="projects.p2.desc">Аркадная игра о космических приключениях с собственной механикой.</p>
+        </div>
+      </article>
+
+      <article class="project-card reveal">
+        <div class="project-thumb pt-3" aria-hidden="true"><i data-lucide="layout-template"></i></div>
+        <div class="project-body">
+          <h3 data-i18n="projects.p3.title">My First Website</h3>
+          <div class="project-meta">
+            <span class="project-tech">HTML / CSS</span>
+            <span data-i18n="projects.p3.age">11 лет</span>
+          </div>
+          <p data-i18n="projects.p3.desc">Персональный сайт-портфолио с адаптивной вёрсткой.</p>
+        </div>
+      </article>
+
+      <article class="project-card reveal">
+        <div class="project-thumb pt-4" aria-hidden="true"><i data-lucide="message-square-code"></i></div>
+        <div class="project-body">
+          <h3 data-i18n="projects.p4.title">AI Chatbot</h3>
+          <div class="project-meta">
+            <span class="project-tech">Python</span>
+            <span data-i18n="projects.p4.age">15 лет</span>
+          </div>
+          <p data-i18n="projects.p4.desc">Чат-бот с обработкой естественного языка для помощи со школьными задачами.</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TEACHER ACADEMY ============ -->
+<section class="section teacher-section" id="teachers">
+  <div class="container">
+    <div class="teacher-panel">
+      <div class="section-header light-on-dark reveal">
+        <span class="eyebrow" data-i18n="teacher.eyebrow">Teacher Academy</span>
+        <h2 data-i18n="teacher.title">Teacher Academy</h2>
+        <p data-i18n="teacher.subtitle">Мы не только обучаем детей. Мы готовим преподавателей, которые смогут обучать новое поколение.</p>
+      </div>
+
+      <div class="teacher-steps">
+        <div class="teacher-step reveal">
+          <div class="teacher-step-num">1</div>
+          <p data-i18n="teacher.step1">Изучить Computer Science</p>
+        </div>
+        <div class="teacher-step-line" aria-hidden="true"></div>
+        <div class="teacher-step reveal">
+          <div class="teacher-step-num">2</div>
+          <p data-i18n="teacher.step2">Освоить методику преподавания</p>
+        </div>
+        <div class="teacher-step-line" aria-hidden="true"></div>
+        <div class="teacher-step reveal">
+          <div class="teacher-step-num">3</div>
+          <p data-i18n="teacher.step3">Провести практические занятия</p>
+        </div>
+        <div class="teacher-step-line" aria-hidden="true"></div>
+        <div class="teacher-step reveal">
+          <div class="teacher-step-num">4</div>
+          <p data-i18n="teacher.step4">Получить сертификацию</p>
+        </div>
+        <div class="teacher-step-line" aria-hidden="true"></div>
+        <div class="teacher-step reveal">
+          <div class="teacher-step-num">5</div>
+          <p data-i18n="teacher.step5">Начать преподавать</p>
+        </div>
+      </div>
+
+      <div class="teacher-cta-row reveal">
+        <a href="#" class="btn btn-primary btn-lg" data-i18n="teacher.cta">Стать преподавателем</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AI TUTOR ============ -->
+<section class="section aitutor-section" id="ai-tutor">
+  <div class="container aitutor-inner">
+    <div class="section-header align-left reveal">
+      <span class="eyebrow" data-i18n="aitutor.eyebrow">AI-наставник</span>
+      <h2 data-i18n="aitutor.title">AI-наставник</h2>
+      <p data-i18n="aitutor.desc1">ИИ не делает задание вместо ребёнка.</p>
+      <p class="strong-line" data-i18n="aitutor.desc2">ИИ помогает ребёнку найти решение самостоятельно.</p>
+    </div>
+
+    <div class="chat-mock reveal">
+      <div class="chat-bubble chat-student">
+        <div class="chat-avatar" aria-hidden="true"><i data-lucide="user"></i></div>
+        <div class="chat-content">
+          <p data-i18n="aitutor.q">Почему мой цикл не работает?</p>
+          <pre class="code-block code-block-error"><code><span class="tok-kw">for</span> i <span class="tok-kw">in</span> <span class="tok-num">10</span>:
+    <span class="tok-fn">print</span>(i)</code></pre>
+        </div>
+      </div>
+
+      <div class="chat-bubble chat-ai">
+        <div class="chat-avatar chat-avatar-ai" aria-hidden="true"><i data-lucide="sparkles"></i></div>
+        <div class="chat-content">
+          <p data-i18n="aitutor.a1">Ты правильно используешь <code>for</code>.</p>
+          <p data-i18n="aitutor.a2">Но посмотри, что находится после слова <code>in</code>.</p>
+          <p data-i18n="aitutor.a3">Вспомни функцию, которая создаёт последовательность чисел.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PARENTS ============ -->
+<section class="section parents-section" id="parents">
+  <div class="container parents-inner">
+    <div class="section-header align-left reveal">
+      <span class="eyebrow" data-i18n="parents.eyebrow">Для родителей</span>
+      <h2 data-i18n="parents.title">Для родителей</h2>
+      <p data-i18n="parents.desc">Полная прозрачность обучения — вы всегда видите реальный прогресс ребёнка, а не только оценки.</p>
+    </div>
+
+    <div class="parent-dashboard-card reveal">
+      <div class="parent-progress-ring">
+        <svg viewBox="0 0 120 120" class="ring-svg" aria-hidden="true">
+          <circle cx="60" cy="60" r="52" class="ring-track"></circle>
+          <circle cx="60" cy="60" r="52" class="ring-fill" style="--ring-progress:82"></circle>
+        </svg>
+        <div class="ring-label">
+          <strong>82%</strong>
+          <span data-i18n="parents.progress">Прогресс</span>
+        </div>
+      </div>
+
+      <div class="parent-stats">
+        <div class="parent-stat">
+          <span class="parent-stat-label" data-i18n="parents.lessons">Уроков</span>
+          <span class="parent-stat-value">18 / 24</span>
+        </div>
+        <div class="parent-stat">
+          <span class="parent-stat-label" data-i18n="parents.projects">Проектов</span>
+          <span class="parent-stat-value">6</span>
+        </div>
+        <div class="parent-stat">
+          <span class="parent-stat-label" data-i18n="parents.strength">Сильная сторона</span>
+          <span class="parent-stat-value" data-i18n="parents.strengthValue">Алгоритмы</span>
+        </div>
+        <div class="parent-stat">
+          <span class="parent-stat-label" data-i18n="parents.nextgoal">Следующая цель</span>
+          <span class="parent-stat-value" data-i18n="parents.nextgoalValue">Функции Python</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DASHBOARD PREVIEW ============ -->
+<section class="section dashboard-section" id="dashboard">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="eyebrow" data-i18n="dashboard.eyebrow">Скоро на платформе</span>
+      <h2 data-i18n="dashboard.title">Личный кабинет ученика</h2>
+      <p data-i18n="dashboard.subtitle">Так будет выглядеть учебная панель — курсы, прогресс, проекты и AI-наставник в одном месте.</p>
+    </div>
+
+    <div class="dashboard-mock reveal">
+      <div class="dashboard-sidebar">
+        <div class="dashboard-sidebar-item active"><i data-lucide="layout-dashboard"></i><span data-i18n="dashboard.sidebar1">Мои курсы</span></div>
+        <div class="dashboard-sidebar-item"><i data-lucide="trending-up"></i><span data-i18n="dashboard.sidebar2">Прогресс</span></div>
+        <div class="dashboard-sidebar-item"><i data-lucide="folder-kanban"></i><span data-i18n="dashboard.sidebar3">Проекты</span></div>
+        <div class="dashboard-sidebar-item"><i data-lucide="sparkles"></i><span data-i18n="dashboard.sidebar4">AI Tutor</span></div>
+      </div>
+      <div class="dashboard-main">
+        <div class="dashboard-main-head">
+          <h3>Python Basics</h3>
+          <span class="dashboard-percent">78%</span>
+        </div>
+        <div class="progress-track dashboard-progress">
+          <div class="progress-fill" style="width:78%"></div>
+        </div>
+        <div class="dashboard-lesson-card">
+          <div>
+            <span class="dashboard-lesson-num" data-i18n="dashboard.lessonNum">Урок 14</span>
+            <strong data-i18n="dashboard.lessonName">Функции</strong>
+          </div>
+          <a href="#" class="btn btn-primary btn-sm" data-i18n="dashboard.continue">Продолжить обучение</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATS ============ -->
+<section class="section stats-section" id="stats">
+  <div class="container stats-grid">
+    <div class="stat-item reveal">
+      <span class="stat-number" data-count="3">0</span>
+      <span class="stat-label" data-i18n="stats.s1">языка</span>
+    </div>
+    <div class="stat-item reveal">
+      <span class="stat-number" data-count="6" data-suffix="+">0</span>
+      <span class="stat-label" data-i18n="stats.s2">направлений</span>
+    </div>
+    <div class="stat-item reveal">
+      <span class="stat-number" data-count="100" data-suffix="+">0</span>
+      <span class="stat-label" data-i18n="stats.s3">практических проектов</span>
+    </div>
+    <div class="stat-item reveal">
+      <span class="stat-number" data-static="6–17">0</span>
+      <span class="stat-label" data-i18n="stats.s4">возраст учеников</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHY US ============ -->
+<section class="section whyus-section" id="whyus">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="eyebrow" data-i18n="whyus.eyebrow">Наши принципы</span>
+      <h2 data-i18n="whyus.title">Почему эта система работает</h2>
+    </div>
+
+    <div class="whyus-grid">
+      <div class="why-card reveal"><i data-lucide="hammer"></i><span data-i18n="whyus.w1">Практика вместо зубрёжки</span></div>
+      <div class="why-card reveal"><i data-lucide="folder-kanban"></i><span data-i18n="whyus.w2">Проекты вместо обычных контрольных</span></div>
+      <div class="why-card reveal"><i data-lucide="sparkles"></i><span data-i18n="whyus.w3">AI-наставник</span></div>
+      <div class="why-card reveal"><i data-lucide="graduation-cap"></i><span data-i18n="whyus.w4">Обучение преподавателей</span></div>
+      <div class="why-card reveal"><i data-lucide="languages"></i><span data-i18n="whyus.w5">Три языка</span></div>
+      <div class="why-card reveal"><i data-lucide="trending-up"></i><span data-i18n="whyus.w6">Индивидуальный прогресс</span></div>
+      <div class="why-card reveal"><i data-lucide="cpu"></i><span data-i18n="whyus.w7">Современные технологии</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PHILOSOPHY ============ -->
+<section class="section philosophy-section" id="about">
+  <div class="container">
+    <p class="philosophy-text reveal">
+      <span data-i18n="philosophy.line1">Ребёнок не должен быть только потребителем технологий.</span><br>
+      <span class="gradient-text" data-i18n="philosophy.line2">Он должен понимать, как они устроены, и уметь создавать собственные.</span>
+    </p>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section class="section final-cta-section">
+  <div class="container final-cta-inner reveal">
+    <h2 data-i18n="finalcta.title">Начни создавать будущее сегодня</h2>
+    <div class="final-cta-row">
+      <a href="#courses" class="btn btn-primary btn-lg" data-i18n="finalcta.cta1">Начать обучение</a>
+      <a href="#teachers" class="btn btn-secondary btn-lg" data-i18n="finalcta.cta2">Стать преподавателем</a>
+      <a href="#directions" class="btn btn-ghost btn-lg" data-i18n="finalcta.cta3">Посмотреть программы</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-col footer-brand">
+      <a href="#hero" class="logo" aria-label="CODESCHOOL — на главную">
+        <span class="logo-mark" aria-hidden="true"><i data-lucide="code-xml"></i></span>
+        <span class="logo-text">CODESCHOOL</span>
+      </a>
+      <p data-i18n="footer.tagline">Образовательная IT-платформа для нового поколения Казахстана.</p>
+      <div class="footer-socials">
+        <a href="#" aria-label="Instagram"><i data-lucide="instagram"></i></a>
+        <a href="#" aria-label="YouTube"><i data-lucide="youtube"></i></a>
+        <a href="#" aria-label="Telegram"><i data-lucide="send"></i></a>
+        <a href="#" aria-label="LinkedIn"><i data-lucide="linkedin"></i></a>
+      </div>
+    </div>
+
+    <div class="footer-col">
+      <h4 data-i18n="footer.platform">Платформа</h4>
+      <a href="#courses" data-i18n="nav.courses">Курсы</a>
+      <a href="#directions" data-i18n="footer.programming">Программирование</a>
+      <a href="#directions" data-i18n="footer.robotics">Робототехника</a>
+      <a href="#directions" data-i18n="footer.ai">Искусственный интеллект</a>
+    </div>
+
+    <div class="footer-col">
+      <h4 data-i18n="footer.people">Люди</h4>
+      <a href="#teachers" data-i18n="footer.teacherAcademy">Teacher Academy</a>
+      <a href="#parents" data-i18n="nav.parents">Родителям</a>
+      <a href="#about" data-i18n="footer.about">О платформе</a>
+      <a href="#" data-i18n="footer.contacts">Контакты</a>
+    </div>
+
+    <div class="footer-col">
+      <h4 data-i18n="footer.language">Язык</h4>
+      <div class="footer-lang-switch">
+        <button type="button" class="lang-btn" data-lang="kz">ҚАЗ</button>
+        <button type="button" class="lang-btn" data-lang="ru">РУС</button>
+        <button type="button" class="lang-btn" data-lang="en">ENG</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container footer-bottom">
+    <p>&copy; <span id="footer-year">2026</span> CODESCHOOL. <span data-i18n="footer.rights">Все права защищены.</span></p>
+    <p class="footer-note" data-i18n="footer.note">Прототип интерфейса. Демонстрационные данные.</p>
+  </div>
+</footer>
+
+</body>
+</html>
