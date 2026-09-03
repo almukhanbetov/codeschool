@@ -20,19 +20,23 @@ export function Footer() {
             <span className="logo-text">CODESCHOOL</span>
           </Link>
           <p>{t.footer.tagline}</p>
+          {/* Social accounts are not live yet — rendered as inert buttons so
+              they never put a fragment in the URL or trigger a scroll.
+              Swap each for <a href="https://…" target="_blank" rel="noreferrer">
+              once the real profiles exist. */}
           <div className="footer-socials">
-            <a href="#" aria-label="Instagram">
+            <button type="button" aria-label="Instagram" aria-disabled="true">
               <Icon name="instagram" />
-            </a>
-            <a href="#" aria-label="YouTube">
+            </button>
+            <button type="button" aria-label="YouTube" aria-disabled="true">
               <Icon name="youtube" />
-            </a>
-            <a href="#" aria-label="Telegram">
+            </button>
+            <button type="button" aria-label="Telegram" aria-disabled="true">
               <Icon name="send" />
-            </a>
-            <a href="#" aria-label="LinkedIn">
+            </button>
+            <button type="button" aria-label="LinkedIn" aria-disabled="true">
               <Icon name="linkedin" />
-            </a>
+            </button>
           </div>
         </div>
 

@@ -80,6 +80,10 @@
 
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; }
+/* `scroll-behavior` / `scroll-padding-top` now only ever apply to the one
+   remaining in-page anchor, the `#main` skip-link (they give it a smooth,
+   header-clearing jump to the content). Public navigation is route-based —
+   no `#section` links remain for them to affect. */
 html { scroll-behavior: smooth; scroll-padding-top: 100px; overflow-x: clip; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -670,8 +674,10 @@ svg.lucide { display: inline-block; width: 1em; height: 1em; stroke-width: 2; }
 .footer-inner { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 40px; padding-bottom: 56px; }
 .footer-brand p { color: var(--text-secondary); font-size: 14px; margin: 16px 0 20px; max-width: 280px; }
 .footer-socials { display: flex; gap: 10px; }
-.footer-socials a { width: 36px; height: 36px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; transition: background .2s var(--ease); }
-.footer-socials a:hover { background: var(--accent-grad); color: #fff; }
+.footer-socials a,
+.footer-socials button { width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-2); color: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s var(--ease); }
+.footer-socials a:hover,
+.footer-socials button:hover { background: var(--accent-grad); color: #fff; }
 .footer-socials svg { width: 16px; height: 16px; }
 .footer-col h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); margin-bottom: 18px; }
 .footer-col { display: flex; flex-direction: column; gap: 12px; }
