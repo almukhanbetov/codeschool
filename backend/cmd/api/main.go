@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"codeschool/backend/internal/academy"
 	"codeschool/backend/internal/admin"
 	"codeschool/backend/internal/assignments"
 	"codeschool/backend/internal/auth"
@@ -156,6 +157,14 @@ func run() error {
 	adminService := admin.NewService(adminRepo, groupsRepo)
 	adminHandler := admin.NewHandler(adminService)
 
+	// Teacher Academy: reuses the whole LMS engine (courses / lessons / quiz /
+	// code runner / progress / submissions) — only courses.audience and the
+	// catalog / enrolment / dashboard endpoints are new.
+	academyRepo := academy.NewRepository(pool)
+	academyService := academy.NewService(academyRepo, coursesService, enrollmentsRepo, submissionsService)
+	academyHandler := academy.NewHandler(academyService)
+	academyAdminHandler := academy.NewAdminHandler(academyService)
+
 	apiV1 := router.Group("/api/v1")
 	programs.RegisterRoutes(apiV1, programsHandler)
 	levels.RegisterRoutes(apiV1, levelsHandler)
@@ -188,6 +197,20 @@ func run() error {
 	groups.RegisterRoutes(teacher, groupsHandler)
 	quizzes.RegisterTeacherRoutes(teacher, quizzesHandler)
 
+	// Teacher Academy — the teacher's own professional learning. The catalog /
+	// enrolment / dashboard endpoints are new; the learning endpoints below
+	// are the *same* student-flow handlers, re-mounted under /teacher-academy
+	// with the teacher-role guard. Enrolment (student_id = teacher id) is the
+	// real access boundary — a teacher can only be enrolled in an academy
+	// course, so these never touch a student course.
+	academyGroup := teacher.Group("/teacher-academy")
+	academy.RegisterRoutes(academyGroup, academyHandler)
+	assignments.RegisterRoutes(academyGroup, assignmentsHandler)
+	submissions.RegisterRoutes(academyGroup, submissionsHandler)
+	progress.RegisterRoutes(academyGroup, progressHandler)
+	quizzes.RegisterStudentRoutes(academyGroup, quizzesHandler)
+	runs.RegisterStudentRoutes(academyGroup, runsHandler)
+
 	// Parent-only endpoints — valid access token + role == "parent". Every
 	// route is read-only (GET).
 	parent := protected.Group("")
@@ -200,6 +223,7 @@ func run() error {
 	admin.RegisterRoutes(adminGroup, adminHandler)
 	quizzes.RegisterAdminRoutes(adminGroup, quizzesAdminHandler)
 	runs.RegisterAdminRoutes(adminGroup, runsAdminHandler)
+	academy.RegisterAdminRoutes(adminGroup, academyAdminHandler)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

@@ -22,15 +22,21 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 
 const columns = `
 	id, level_id, title, slug, description, short_description, image_url,
-	age_from, age_to, duration_lessons, projects_count, difficulty,
+	age_from, age_to, duration_lessons, projects_count, difficulty, audience,
 	is_published, position, created_at, updated_at
 `
+
+// publicAudience is appended to every public catalog query so Teacher Academy
+// courses (audience = 'teacher') are never exposed as ordinary / children's
+// courses (spec: student & parent isolation). 'both' courses are visible in
+// both catalogs.
+const publicAudience = ` AND audience <> 'teacher'`
 
 // List returns published courses matching the optional filter, ordered by
 // position. Age filtering is an overlap check: a course matches if its own
 // [age_from, age_to] range overlaps the requested one.
 func (r *Repository) List(ctx context.Context, filter ListFilter) ([]Course, error) {
-	query := `SELECT ` + columns + ` FROM courses WHERE is_published = TRUE`
+	query := `SELECT ` + columns + ` FROM courses WHERE is_published = TRUE` + publicAudience
 	var args []any
 
 	if filter.LevelID != nil {
@@ -72,6 +78,21 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (Course, error) {
 	return r.getOne(ctx, "id = $1", id)
 }
 
+// GetByIDAny returns any published course by id, INCLUDING Teacher Academy
+// courses. For internal callers (the academy package) — the public catalog
+// endpoints keep using GetByID, which hides audience = 'teacher'.
+func (r *Repository) GetByIDAny(ctx context.Context, id int64) (Course, error) {
+	row := r.pool.QueryRow(ctx, `SELECT `+columns+` FROM courses WHERE is_published = TRUE AND id = $1`, id)
+	c, err := scanCourse(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Course{}, ErrNotFound
+	}
+	if err != nil {
+		return Course{}, fmt.Errorf("get course (any audience): %w", err)
+	}
+	return c, nil
+}
+
 // ListByIDs returns the published courses among the given ids, in no
 // particular order. Used to hydrate a student's "my courses" list.
 func (r *Repository) ListByIDs(ctx context.Context, ids []int64) ([]Course, error) {
@@ -81,7 +102,7 @@ func (r *Repository) ListByIDs(ctx context.Context, ids []int64) ([]Course, erro
 	rows, err := r.pool.Query(ctx, `
 		SELECT `+columns+`
 		FROM courses
-		WHERE is_published = TRUE AND id = ANY($1)
+		WHERE is_published = TRUE AND audience <> 'teacher' AND id = ANY($1)
 	`, ids)
 	if err != nil {
 		return nil, fmt.Errorf("query courses by ids: %w", err)
@@ -110,7 +131,7 @@ func (r *Repository) getOne(ctx context.Context, predicate string, arg any) (Cou
 	row := r.pool.QueryRow(ctx, `
 		SELECT `+columns+`
 		FROM courses
-		WHERE is_published = TRUE AND `+strings.TrimSpace(predicate)+`
+		WHERE is_published = TRUE`+publicAudience+` AND `+strings.TrimSpace(predicate)+`
 	`, arg)
 
 	c, err := scanCourse(row)
@@ -132,7 +153,7 @@ func scanCourse(row rowScanner) (Course, error) {
 	err := row.Scan(
 		&c.ID, &c.LevelID, &c.Title, &c.Slug, &c.Description, &c.ShortDescription, &c.ImageURL,
 		&c.AgeFrom, &c.AgeTo, &c.DurationLessons, &c.ProjectsCount, &c.Difficulty,
-		&c.IsPublished, &c.Position, &c.CreatedAt, &c.UpdatedAt,
+		&c.Audience, &c.IsPublished, &c.Position, &c.CreatedAt, &c.UpdatedAt,
 	)
 	return c, err
 }

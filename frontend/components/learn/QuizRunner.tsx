@@ -30,10 +30,14 @@ export function QuizRunner({
   courseId,
   lessonId,
   assignmentId,
+  apiPrefix = "",
+  basePath = "/learn",
 }: {
   courseId: number;
   lessonId: number;
   assignmentId: number;
+  apiPrefix?: string;
+  basePath?: string;
 }) {
   const { t } = useLanguage();
   const q = t.quiz;
@@ -50,8 +54,8 @@ export function QuizRunner({
     setIndex(0);
     try {
       const [start, hist] = await Promise.all([
-        startQuizAttempt(assignmentId),
-        getQuizAttempts(assignmentId),
+        startQuizAttempt(assignmentId, apiPrefix),
+        getQuizAttempts(assignmentId, apiPrefix),
       ]);
       setHistory(hist);
       setPhase({ kind: "taking", start });
@@ -61,7 +65,7 @@ export function QuizRunner({
         message: err instanceof ApiError ? err.message : q.loadError,
       });
     }
-  }, [assignmentId, q.loadError]);
+  }, [assignmentId, apiPrefix, q.loadError]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -91,7 +95,7 @@ export function QuizRunner({
           selectedOptionIds: answers[qq.id] ?? [],
         }))
         .filter((a) => a.selectedOptionIds.length > 0);
-      const result = await submitQuizAttempt(phase.start.attempt.id, payload);
+      const result = await submitQuizAttempt(phase.start.attempt.id, payload, apiPrefix);
       setPhase({ kind: "result", result });
     } catch (err) {
       setPhase({
@@ -104,7 +108,7 @@ export function QuizRunner({
   }
 
   const backToLesson = (
-    <Link href={`/learn/${courseId}/lesson/${lessonId}`} className="student-viewall">
+    <Link href={`${basePath}/${courseId}/lesson/${lessonId}`} className="student-viewall">
       {q.backToLesson}
     </Link>
   );
@@ -118,7 +122,7 @@ export function QuizRunner({
       <Shell>
         {backToLesson}
         <p className="auth-error" role="alert">{phase.message}</p>
-        <Button href={`/learn/${courseId}/lesson/${lessonId}`} variant="ghost" size="sm">
+        <Button href={`${basePath}/${courseId}/lesson/${lessonId}`} variant="ghost" size="sm">
           {q.backToLesson}
         </Button>
       </Shell>
@@ -134,7 +138,7 @@ export function QuizRunner({
           canRetry={history?.canStart ?? true}
           attemptsLeft={history?.attemptsLeft ?? null}
           onRetry={() => void begin()}
-          backHref={`/learn/${courseId}/lesson/${lessonId}`}
+          backHref={`${basePath}/${courseId}/lesson/${lessonId}`}
         />
       </Shell>
     );

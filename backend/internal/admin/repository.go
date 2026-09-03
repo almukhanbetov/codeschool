@@ -422,13 +422,13 @@ func (r *Repository) DeleteLevel(ctx context.Context, id int64) error {
    =================================================================== */
 
 const courseCols = `id, level_id, title, slug, description, short_description, image_url,
-	age_from, age_to, duration_lessons, projects_count, difficulty, is_published, position,
+	age_from, age_to, duration_lessons, projects_count, difficulty, audience, is_published, position,
 	created_at, updated_at`
 
 func scanCourse(row rowScanner) (CourseRow, error) {
 	var c CourseRow
 	err := row.Scan(&c.ID, &c.LevelID, &c.Title, &c.Slug, &c.Description, &c.ShortDescription, &c.ImageURL,
-		&c.AgeFrom, &c.AgeTo, &c.DurationLessons, &c.ProjectsCount, &c.Difficulty, &c.IsPublished, &c.Position,
+		&c.AgeFrom, &c.AgeTo, &c.DurationLessons, &c.ProjectsCount, &c.Difficulty, &c.Audience, &c.IsPublished, &c.Position,
 		&c.CreatedAt, &c.UpdatedAt)
 	return c, err
 }
@@ -469,11 +469,11 @@ func (r *Repository) GetCourse(ctx context.Context, id int64) (CourseRow, error)
 func (r *Repository) CreateCourse(ctx context.Context, req CreateCourseRequest) (CourseRow, error) {
 	c, err := scanCourse(r.pool.QueryRow(ctx, `
 		INSERT INTO courses (level_id, title, slug, description, short_description, image_url,
-			age_from, age_to, duration_lessons, projects_count, difficulty, is_published, position)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, COALESCE($12, FALSE), COALESCE($13, 0))
+			age_from, age_to, duration_lessons, projects_count, difficulty, is_published, position, audience)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, COALESCE($12, FALSE), COALESCE($13, 0), COALESCE($14, 'student'))
 		RETURNING `+courseCols,
 		req.LevelID, req.Title, req.Slug, req.Description, req.ShortDescription, req.ImageURL,
-		req.AgeFrom, req.AgeTo, req.DurationLessons, req.ProjectsCount, req.Difficulty, req.IsPublished, req.Position))
+		req.AgeFrom, req.AgeTo, req.DurationLessons, req.ProjectsCount, req.Difficulty, req.IsPublished, req.Position, normStr(req.Audience)))
 	return c, classify(err)
 }
 

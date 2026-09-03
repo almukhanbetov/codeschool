@@ -160,6 +160,7 @@ type CourseRow struct {
 	DurationLessons  *int      `json:"durationLessons"`
 	ProjectsCount    *int      `json:"projectsCount"`
 	Difficulty       *string   `json:"difficulty"`
+	Audience         string    `json:"audience"`
 	IsPublished      bool      `json:"isPublished"`
 	Position         int       `json:"position"`
 	CreatedAt        time.Time `json:"createdAt"`
@@ -178,6 +179,7 @@ type CreateCourseRequest struct {
 	DurationLessons  *int    `json:"durationLessons"`
 	ProjectsCount    *int    `json:"projectsCount"`
 	Difficulty       *string `json:"difficulty"`
+	Audience         *string `json:"audience"`
 	IsPublished      *bool   `json:"isPublished"`
 	Position         *int    `json:"position"`
 }
@@ -194,6 +196,7 @@ type UpdateCourseRequest struct {
 	DurationLessons  *int    `json:"durationLessons"`
 	ProjectsCount    *int    `json:"projectsCount"`
 	Difficulty       *string `json:"difficulty"`
+	Audience         *string `json:"audience"`
 	IsPublished      *bool   `json:"isPublished"`
 	Position         *int    `json:"position"`
 }

@@ -16,6 +16,7 @@ type Course struct {
 	DurationLessons  *int
 	ProjectsCount    *int
 	Difficulty       *string
+	Audience         string // 'student' | 'teacher' | 'both' (migration 00025)
 	IsPublished      bool
 	Position         int
 	CreatedAt        time.Time

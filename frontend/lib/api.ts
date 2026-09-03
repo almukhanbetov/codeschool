@@ -66,6 +66,12 @@ import type {
   AssignmentTestsResponse,
   CodeGradeResult,
   AdminAssignmentTest,
+  AcademyCourseCard,
+  AcademyMyCourse,
+  AcademyDashboard,
+  AcademyLearnerRow,
+  AcademySubmissionRow,
+  AcademySubmissionDetail,
 } from "@/types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
@@ -304,42 +310,43 @@ export function getMyProgress(): Promise<CourseProgress[]> {
   return browserFetch<CourseProgress[]>("/me/progress", { auth: true });
 }
 
-export function getCourseProgress(courseId: number): Promise<CourseProgressDetail> {
-  return browserFetch<CourseProgressDetail>(`/me/courses/${courseId}/progress`, { auth: true });
+export function getCourseProgress(courseId: number, prefix = ""): Promise<CourseProgressDetail> {
+  return browserFetch<CourseProgressDetail>(`${prefix}/me/courses/${courseId}/progress`, { auth: true });
 }
 
-export function startLesson(lessonId: number): Promise<LessonProgress> {
-  return browserFetch<LessonProgress>(`/lessons/${lessonId}/start`, { method: "POST", auth: true });
+export function startLesson(lessonId: number, prefix = ""): Promise<LessonProgress> {
+  return browserFetch<LessonProgress>(`${prefix}/lessons/${lessonId}/start`, { method: "POST", auth: true });
 }
 
-export function completeLesson(lessonId: number): Promise<CompleteLessonResult> {
-  return browserFetch<CompleteLessonResult>(`/lessons/${lessonId}/complete`, {
+export function completeLesson(lessonId: number, prefix = ""): Promise<CompleteLessonResult> {
+  return browserFetch<CompleteLessonResult>(`${prefix}/lessons/${lessonId}/complete`, {
     method: "POST",
     auth: true,
   });
 }
 
-export function getLessonAssignments(lessonId: number): Promise<Assignment[]> {
-  return browserFetch<Assignment[]>(`/lessons/${lessonId}/assignments`, { auth: true });
+export function getLessonAssignments(lessonId: number, prefix = ""): Promise<Assignment[]> {
+  return browserFetch<Assignment[]>(`${prefix}/lessons/${lessonId}/assignments`, { auth: true });
 }
 
-export function getMySubmission(assignmentId: number): Promise<Submission | null> {
-  return browserFetch<Submission | null>(`/assignments/${assignmentId}/submission`, { auth: true });
+export function getMySubmission(assignmentId: number, prefix = ""): Promise<Submission | null> {
+  return browserFetch<Submission | null>(`${prefix}/assignments/${assignmentId}/submission`, { auth: true });
 }
 
 export function saveSubmissionDraft(
   assignmentId: number,
-  input: SubmissionInput
+  input: SubmissionInput,
+  prefix = ""
 ): Promise<Submission> {
-  return browserFetch<Submission>(`/assignments/${assignmentId}/submission`, {
+  return browserFetch<Submission>(`${prefix}/assignments/${assignmentId}/submission`, {
     method: "PUT",
     body: JSON.stringify(input),
     auth: true,
   });
 }
 
-export function submitAssignment(assignmentId: number): Promise<Submission> {
-  return browserFetch<Submission>(`/assignments/${assignmentId}/submit`, {
+export function submitAssignment(assignmentId: number, prefix = ""): Promise<Submission> {
+  return browserFetch<Submission>(`${prefix}/assignments/${assignmentId}/submit`, {
     method: "POST",
     auth: true,
   });
@@ -350,32 +357,33 @@ export function submitAssignment(assignmentId: number): Promise<Submission> {
    the client never sends or trusts a score.
    ========================================================= */
 
-export function startQuizAttempt(assignmentId: number): Promise<QuizStartResponse> {
-  return browserFetch<QuizStartResponse>(`/assignments/${assignmentId}/quiz/attempts`, {
+export function startQuizAttempt(assignmentId: number, prefix = ""): Promise<QuizStartResponse> {
+  return browserFetch<QuizStartResponse>(`${prefix}/assignments/${assignmentId}/quiz/attempts`, {
     method: "POST",
     auth: true,
   });
 }
 
-export function getQuizAttempts(assignmentId: number): Promise<QuizAttemptHistory> {
-  return browserFetch<QuizAttemptHistory>(`/assignments/${assignmentId}/quiz/attempts`, {
+export function getQuizAttempts(assignmentId: number, prefix = ""): Promise<QuizAttemptHistory> {
+  return browserFetch<QuizAttemptHistory>(`${prefix}/assignments/${assignmentId}/quiz/attempts`, {
     auth: true,
   });
 }
 
 export function submitQuizAttempt(
   attemptId: number,
-  answers: QuizSubmitAnswer[]
+  answers: QuizSubmitAnswer[],
+  prefix = ""
 ): Promise<QuizResult> {
-  return browserFetch<QuizResult>(`/quiz/attempts/${attemptId}/submit`, {
+  return browserFetch<QuizResult>(`${prefix}/quiz/attempts/${attemptId}/submit`, {
     method: "POST",
     body: JSON.stringify({ answers }),
     auth: true,
   });
 }
 
-export function getQuizAttempt(attemptId: number): Promise<QuizAttemptDetail> {
-  return browserFetch<QuizAttemptDetail>(`/quiz/attempts/${attemptId}`, { auth: true });
+export function getQuizAttempt(attemptId: number, prefix = ""): Promise<QuizAttemptDetail> {
+  return browserFetch<QuizAttemptDetail>(`${prefix}/quiz/attempts/${attemptId}`, { auth: true });
 }
 
 export function getTeacherQuizAttempt(attemptId: number): Promise<QuizResult> {
@@ -390,33 +398,85 @@ export function getTeacherQuizAttempt(attemptId: number): Promise<QuizResult> {
 export function runCode(
   assignmentId: number,
   code: string,
-  stdin: string
+  stdin: string,
+  prefix = ""
 ): Promise<CodeRunResult> {
-  return browserFetch<CodeRunResult>(`/assignments/${assignmentId}/run`, {
+  return browserFetch<CodeRunResult>(`${prefix}/assignments/${assignmentId}/run`, {
     method: "POST",
     body: JSON.stringify({ code, stdin }),
     auth: true,
   });
 }
 
-export function getCodeRuns(assignmentId: number): Promise<CodeRunHistoryItem[]> {
-  return browserFetch<CodeRunHistoryItem[]>(`/assignments/${assignmentId}/runs`, { auth: true });
+export function getCodeRuns(assignmentId: number, prefix = ""): Promise<CodeRunHistoryItem[]> {
+  return browserFetch<CodeRunHistoryItem[]>(`${prefix}/assignments/${assignmentId}/runs`, { auth: true });
 }
 
-export function getAssignmentTests(assignmentId: number): Promise<AssignmentTestsResponse> {
-  return browserFetch<AssignmentTestsResponse>(`/assignments/${assignmentId}/tests`, { auth: true });
+export function getAssignmentTests(assignmentId: number, prefix = ""): Promise<AssignmentTestsResponse> {
+  return browserFetch<AssignmentTestsResponse>(`${prefix}/assignments/${assignmentId}/tests`, { auth: true });
 }
 
 export function submitCodeForGrading(
   assignmentId: number,
-  code: string
+  code: string,
+  prefix = ""
 ): Promise<CodeGradeResult> {
-  return browserFetch<CodeGradeResult>(`/assignments/${assignmentId}/code/submit`, {
+  return browserFetch<CodeGradeResult>(`${prefix}/assignments/${assignmentId}/code/submit`, {
     method: "POST",
     body: JSON.stringify({ code }),
     auth: true,
   });
 }
+
+/* =========================================================
+   Teacher Academy — the teacher's own professional learning.
+   ACADEMY_API is the prefix passed to the shared learn functions
+   above so they hit the /teacher-academy/* copy of the routes.
+   ========================================================= */
+
+export const ACADEMY_API = "/teacher-academy";
+
+export function getTeacherAcademyCourses(): Promise<AcademyCourseCard[]> {
+  return browserFetch<AcademyCourseCard[]>("/teacher-academy/courses", { auth: true });
+}
+
+export function enrollTeacherAcademyCourse(courseId: number): Promise<Enrollment> {
+  return browserFetch<Enrollment>(`/teacher-academy/courses/${courseId}/enroll`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export function getMyAcademyCourses(): Promise<AcademyMyCourse[]> {
+  return browserFetch<AcademyMyCourse[]>("/teacher-academy/me/courses", { auth: true });
+}
+
+export function getAcademyDashboard(): Promise<AcademyDashboard> {
+  return browserFetch<AcademyDashboard>("/teacher-academy/dashboard", { auth: true });
+}
+
+export function getAcademyCourseContent(courseId: number): Promise<CourseContent> {
+  return browserFetch<CourseContent>(`/teacher-academy/courses/${courseId}/content`, { auth: true });
+}
+
+/* Admin academy review */
+export const adminAcademyApi = {
+  learners: () =>
+    browserFetch<AcademyLearnerRow[]>("/admin/academy/learners", { auth: true }),
+  submissions: (status?: string) =>
+    browserFetch<AcademySubmissionRow[]>(
+      `/admin/academy/submissions${status ? `?status=${encodeURIComponent(status)}` : ""}`,
+      { auth: true }
+    ),
+  submission: (id: number) =>
+    browserFetch<AcademySubmissionDetail>(`/admin/academy/submissions/${id}`, { auth: true }),
+  review: (id: number, body: { score?: number | null; feedback: string; status: "passed" | "failed" }) =>
+    browserFetch<AcademySubmissionDetail>(`/admin/academy/submissions/${id}/review`, {
+      method: "POST",
+      body: JSON.stringify(body),
+      auth: true,
+    }),
+};
 
 /* =========================================================
    Teacher flow — all browser-side, all require a teacher token.

@@ -17,11 +17,15 @@ import type { Assignment, QuizAttemptHistory, Submission } from "@/types";
 export function AssignmentPanel({
   assignment,
   courseId,
+  apiPrefix = "",
+  basePath = "/learn",
   initialSubmission,
   onSubmittedChange,
 }: {
   assignment: Assignment;
   courseId: number;
+  apiPrefix?: string;
+  basePath?: string;
   initialSubmission: Submission | null;
   onSubmittedChange: (submitted: boolean) => void;
 }) {
@@ -30,6 +34,8 @@ export function AssignmentPanel({
       <QuizAssignmentPanel
         assignment={assignment}
         courseId={courseId}
+        apiPrefix={apiPrefix}
+        basePath={basePath}
         onSubmittedChange={onSubmittedChange}
       />
     );
@@ -38,6 +44,7 @@ export function AssignmentPanel({
     return (
       <CodeAssignmentPanel
         assignment={assignment}
+        apiPrefix={apiPrefix}
         initialSubmission={initialSubmission}
         onSubmittedChange={onSubmittedChange}
       />
@@ -46,6 +53,7 @@ export function AssignmentPanel({
   return (
     <TextAssignmentPanel
       assignment={assignment}
+      apiPrefix={apiPrefix}
       initialSubmission={initialSubmission}
       onSubmittedChange={onSubmittedChange}
     />
@@ -57,10 +65,14 @@ export function AssignmentPanel({
 function QuizAssignmentPanel({
   assignment,
   courseId,
+  apiPrefix,
+  basePath,
   onSubmittedChange,
 }: {
   assignment: Assignment;
   courseId: number;
+  apiPrefix: string;
+  basePath: string;
   onSubmittedChange: (submitted: boolean) => void;
 }) {
   const { t } = useLanguage();
@@ -75,20 +87,20 @@ function QuizAssignmentPanel({
 
   const load = useCallback(async () => {
     try {
-      const h = await getQuizAttempts(assignment.id);
+      const h = await getQuizAttempts(assignment.id, apiPrefix);
       setHistory(h);
       notify.current(h.passed);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : q.loadError);
     }
-  }, [assignment.id, q.loadError]);
+  }, [assignment.id, apiPrefix, q.loadError]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
-  const quizHref = `/learn/${courseId}/lesson/${assignment.lessonId}/quiz/${assignment.id}`;
+  const quizHref = `${basePath}/${courseId}/lesson/${assignment.lessonId}/quiz/${assignment.id}`;
   const hasAttempts = (history?.attempts.length ?? 0) > 0;
   const label = history?.inProgressId
     ? q.continueQuiz
@@ -144,7 +156,7 @@ function QuizAssignmentPanel({
             .filter((a) => a.status === "submitted")
             .map((a) => (
               <li key={a.attemptId}>
-                <Link href={`/learn/${courseId}/lesson/${assignment.lessonId}/quiz/${assignment.id}`}>
+                <Link href={quizHref}>
                   {q.attemptNumber} {a.attemptNumber}
                 </Link>
                 <span>
@@ -165,10 +177,12 @@ function QuizAssignmentPanel({
 
 function TextAssignmentPanel({
   assignment,
+  apiPrefix,
   initialSubmission,
   onSubmittedChange,
 }: {
   assignment: Assignment;
+  apiPrefix: string;
   initialSubmission: Submission | null;
   onSubmittedChange: (submitted: boolean) => void;
 }) {
@@ -187,7 +201,7 @@ function TextAssignmentPanel({
   const isPassed = submission?.status === "passed";
 
   async function persist() {
-    return saveSubmissionDraft(assignment.id, { answer: value });
+    return saveSubmissionDraft(assignment.id, { answer: value }, apiPrefix);
   }
 
   async function save() {
@@ -210,7 +224,7 @@ function TextAssignmentPanel({
     setError(null);
     try {
       await persist();
-      const next = await submitAssignment(assignment.id);
+      const next = await submitAssignment(assignment.id, apiPrefix);
       setSubmission(next);
       onSubmittedChange(true);
       setNotice(t.learn.submittedNotice);

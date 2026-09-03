@@ -321,6 +321,155 @@ BEGIN
 END
 $quiz$;
 
+-- ============================================================
+-- Teacher Academy — the teacher's own professional learning.
+-- Reuses the entire LMS engine; audience = 'teacher' is the only
+-- new bit of metadata (migration 00025).
+-- ============================================================
+
+INSERT INTO programs (title, slug, description, age_from, age_to, is_active)
+VALUES (
+    'Teacher Academy',
+    'teacher-academy',
+    'Подготовка преподавателей программирования: методика, инструменты, безопасность и AI-грамотность.',
+    NULL, NULL, TRUE
+)
+ON CONFLICT (slug) DO UPDATE SET
+    title = EXCLUDED.title, description = EXCLUDED.description, is_active = TRUE, updated_at = NOW();
+
+INSERT INTO levels (program_id, title, description, position)
+SELECT p.id, 'Основной трек', 'Базовые модули для действующих и будущих преподавателей.', 1
+FROM programs p
+WHERE p.slug = 'teacher-academy'
+  AND NOT EXISTS (SELECT 1 FROM levels WHERE program_id = p.id AND title = 'Основной трек');
+
+INSERT INTO courses (
+    level_id, title, slug, description, short_description, image_url,
+    age_from, age_to, duration_lessons, projects_count, difficulty,
+    audience, is_published, position
+)
+VALUES (
+    (SELECT l.id FROM levels l JOIN programs p ON p.id = l.program_id
+        WHERE p.slug = 'teacher-academy' AND l.title = 'Основной трек'),
+    'Методика преподавания Python', 'academy-python-methodology',
+    'Как объяснять Python детям: от первой программы до работы над ошибками. Методические материалы, квиз, практика кода и разработка плана урока.',
+    'Методика преподавания Python для школьников.',
+    NULL, NULL, NULL, 6, 1, 'beginner',
+    'teacher', TRUE, 1
+)
+ON CONFLICT (slug) DO UPDATE SET
+    level_id = EXCLUDED.level_id,
+    title = EXCLUDED.title,
+    description = EXCLUDED.description,
+    short_description = EXCLUDED.short_description,
+    difficulty = EXCLUDED.difficulty,
+    audience = EXCLUDED.audience,
+    is_published = EXCLUDED.is_published,
+    position = EXCLUDED.position,
+    updated_at = NOW();
+
+-- Modules + lessons + assignments are cleared and rebuilt for this course.
+DELETE FROM modules WHERE course_id = (SELECT id FROM courses WHERE slug = 'academy-python-methodology');
+
+DO $academy$
+DECLARE
+    cid   BIGINT;
+    m1 BIGINT; m2 BIGINT; m3 BIGINT;
+    les BIGINT;
+    aid BIGINT;
+    qid BIGINT;
+BEGIN
+    SELECT id INTO cid FROM courses WHERE slug = 'academy-python-methodology';
+
+    INSERT INTO modules (course_id, title, description, position) VALUES
+        (cid, 'Как дети воспринимают программирование', 'Возрастные особенности, язык объяснений, типичные страхи.', 1) RETURNING id INTO m1;
+    INSERT INTO modules (course_id, title, description, position) VALUES
+        (cid, 'Первые темы Python', 'Первая программа, переменные, условия и циклы через жизненные примеры.', 2) RETURNING id INTO m2;
+    INSERT INTO modules (course_id, title, description, position) VALUES
+        (cid, 'Практика преподавания', 'Работа над ошибками и разработка собственного урока.', 3) RETURNING id INTO m3;
+
+    -- M1 L1 — text methodology lesson
+    INSERT INTO lessons (module_id, title, slug, description, content, lesson_type, position, is_published)
+    VALUES (m1, 'Как объяснить цикл for ребёнку 9 лет', 'academy-loop-for-kids',
+            'Методический разбор: аналогии, ошибки объяснения, проверочные вопросы.',
+            E'Цикл — это «повторяй, пока не закончится список».\n\nАналогия: раздать каждому ученику по тетради — «для каждого ученика: дай тетрадь».\n\nЧего избегать: слов «итерация», «инкремент». Сначала действие, потом термин.',
+            'text', 1, TRUE);
+
+    -- M1 L2 — quiz assignment
+    INSERT INTO lessons (module_id, title, slug, description, content, lesson_type, position, is_published)
+    VALUES (m1, 'Методика объяснения переменных', 'academy-variables-method',
+            'Проверьте себя: как вводить понятие переменной без сложных терминов.', NULL, 'quiz', 2, TRUE)
+    RETURNING id INTO les;
+    INSERT INTO assignments (lesson_id, title, description, assignment_type, points, position, is_published)
+    VALUES (les, 'Квиз: объяснение переменных', 'Короткий тест по методике.', 'quiz', 0, 1, TRUE)
+    RETURNING id INTO aid;
+    INSERT INTO quiz_settings (assignment_id, pass_percent, show_correct_answers, show_explanations)
+    VALUES (aid, 70, TRUE, TRUE);
+    INSERT INTO quiz_questions (assignment_id, question_text, question_type, points, position, explanation)
+    VALUES (aid, 'С какой аналогии лучше начинать объяснение переменной?', 'single_choice', 2, 1,
+            'Коробка с подписью — простой и наглядный образ хранения значения.')
+    RETURNING id INTO qid;
+    INSERT INTO quiz_options (question_id, option_text, is_correct, position) VALUES
+        (qid, 'Ячейка памяти по адресу 0x1F', FALSE, 1),
+        (qid, 'Коробка с подписью, в которую кладут значение', TRUE, 2),
+        (qid, 'Указатель на область кучи', FALSE, 3);
+    INSERT INTO quiz_questions (assignment_id, question_text, question_type, points, position, explanation)
+    VALUES (aid, 'Что стоит показать сразу после введения переменной?', 'single_choice', 2, 2,
+            'Изменение значения делает понятие «живым» и показывает смысл имени.')
+    RETURNING id INTO qid;
+    INSERT INTO quiz_options (question_id, option_text, is_correct, position) VALUES
+        (qid, 'Как поменять значение переменной', TRUE, 1),
+        (qid, 'Типизацию и приведение типов', FALSE, 2),
+        (qid, 'Область видимости', FALSE, 3);
+    INSERT INTO quiz_questions (assignment_id, question_text, question_type, points, position, explanation)
+    VALUES (aid, 'Термин «переменная» вводим до или после практики?', 'true_false', 2, 3,
+            'Сначала ребёнок делает — потом получает название.')
+    RETURNING id INTO qid;
+    INSERT INTO quiz_options (question_id, option_text, is_correct, position) VALUES
+        (qid, 'После практики', TRUE, 1),
+        (qid, 'До практики', FALSE, 2);
+
+    -- M2 L1 — code assignment (python)
+    INSERT INTO lessons (module_id, title, slug, description, content, lesson_type, position, is_published)
+    VALUES (m2, 'Подготовьте простой пример Python для ученика', 'academy-python-example',
+            'Напишите короткую программу-пример, которую покажете на первом уроке.', NULL, 'code', 1, TRUE)
+    RETURNING id INTO les;
+    INSERT INTO assignments (lesson_id, title, description, assignment_type, starter_code, language, points, position, is_published)
+    VALUES (les, 'Пример: приветствие по имени', E'Программа читает имя со стандартного ввода и печатает: Привет, <имя>!',
+            'code', E'name = input()\n# допишите вывод', 'python', 10, 1, TRUE)
+    RETURNING id INTO aid;
+    INSERT INTO assignment_tests (assignment_id, name, stdin, expected_stdout, is_hidden, weight, position) VALUES
+        (aid, 'Пример из условия', 'Аружан', 'Привет, Аружан!', FALSE, 1, 1),
+        (aid, 'Другое имя (скрытый)', 'Тимур', 'Привет, Тимур!', TRUE, 1, 2);
+
+    -- M3 L1 — text: work over mistakes
+    INSERT INTO lessons (module_id, title, slug, description, content, lesson_type, position, is_published)
+    VALUES (m3, 'Работа над ошибками ученика', 'academy-mistakes',
+            'Как реагировать на ошибку: не «неправильно», а «давай посмотрим, что произошло».',
+            E'Ошибка — это данные, а не приговор.\n\nАлгоритм: 1) прочитать сообщение вслух вместе; 2) найти строку; 3) спросить «что мы хотели?»; 4) дать ученику самому исправить.',
+            'text', 1, TRUE);
+
+    -- M3 L2 — practical teaching assignment (project)
+    INSERT INTO lessons (module_id, title, slug, description, content, lesson_type, position, is_published)
+    VALUES (m3, 'Практическое занятие: план урока', 'academy-lesson-plan',
+            'Итоговое задание трека.', NULL, 'project', 2, TRUE)
+    RETURNING id INTO les;
+    INSERT INTO assignments (lesson_id, title, description, assignment_type, points, position, is_published)
+    VALUES (les, 'Подготовьте план 45-минутного урока на тему «Цикл for»',
+            E'Оформите план: цель урока, объяснение темы, практическое упражнение для учеников, домашнее задание. Отправьте текстом.',
+            'project', 20, 1, TRUE);
+END
+$academy$;
+
+-- ---------- Enrol the dev teacher in the academy course ----------
+INSERT INTO enrollments (student_id, course_id, status)
+SELECT u.id, c.id, 'active'
+FROM users u
+CROSS JOIN courses c
+WHERE u.email = 'teacher@codeschool.local' AND u.role = 'teacher'
+  AND c.slug = 'academy-python-methodology'
+ON CONFLICT (student_id, course_id) WHERE status = 'active' DO NOTHING;
+
 -- ---------- Auto-enrol the dev student in "Python Start" ----------
 -- No-op if seeds/dev_seed_users.sql has not been run yet, and idempotent
 -- (the partial unique index blocks a second active enrollment).

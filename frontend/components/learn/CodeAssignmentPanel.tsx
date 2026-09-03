@@ -25,10 +25,12 @@ import type {
 
 export function CodeAssignmentPanel({
   assignment,
+  apiPrefix = "",
   initialSubmission,
   onSubmittedChange,
 }: {
   assignment: Assignment;
+  apiPrefix?: string;
   initialSubmission: Submission | null;
   onSubmittedChange: (submitted: boolean) => void;
 }) {
@@ -63,15 +65,15 @@ export function CodeAssignmentPanel({
   const refresh = useCallback(async () => {
     try {
       const [ts, hist] = await Promise.all([
-        getAssignmentTests(assignment.id).catch(() => null),
-        getCodeRuns(assignment.id).catch(() => [] as CodeRunHistoryItem[]),
+        getAssignmentTests(assignment.id, apiPrefix).catch(() => null),
+        getCodeRuns(assignment.id, apiPrefix).catch(() => [] as CodeRunHistoryItem[]),
       ]);
       setTests(ts);
       setHistory(hist);
     } catch {
       /* non-fatal */
     }
-  }, [assignment.id]);
+  }, [assignment.id, apiPrefix]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -83,7 +85,7 @@ export function CodeAssignmentPanel({
   }
 
   async function persist() {
-    return saveSubmissionDraft(assignment.id, { code });
+    return saveSubmissionDraft(assignment.id, { code }, apiPrefix);
   }
 
   async function save() {
@@ -106,7 +108,7 @@ export function CodeAssignmentPanel({
     setError(null);
     setOutput(null);
     try {
-      const res = await runCode(assignment.id, code, withStdin ?? stdin);
+      const res = await runCode(assignment.id, code, withStdin ?? stdin, apiPrefix);
       setOutput(res);
       await refresh();
     } catch (err) {
@@ -124,7 +126,7 @@ export function CodeAssignmentPanel({
     setError(null);
     try {
       if (tests?.hasTests) {
-        const res = await submitCodeForGrading(assignment.id, code);
+        const res = await submitCodeForGrading(assignment.id, code, apiPrefix);
         setGrade(res);
         setSubmission((s) =>
           s
@@ -135,7 +137,7 @@ export function CodeAssignmentPanel({
         await refresh();
       } else {
         await persist();
-        const next = await submitAssignment(assignment.id);
+        const next = await submitAssignment(assignment.id, apiPrefix);
         setSubmission(next);
         notify.current(true);
         setNotice(L.submittedNotice);

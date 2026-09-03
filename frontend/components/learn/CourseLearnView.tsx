@@ -6,7 +6,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { ApiError, getCourseContent, getCourseProgress } from "@/lib/api";
+import { ApiError, getAcademyCourseContent, getCourseContent, getCourseProgress } from "@/lib/api";
 import type { CourseContent, CourseProgressDetail, LessonProgressStatus } from "@/types";
 
 type State =
@@ -15,8 +15,19 @@ type State =
   | { kind: "error" }
   | { kind: "ready"; content: CourseContent; progress: CourseProgressDetail };
 
-export function CourseLearnView({ courseId }: { courseId: number }) {
+export function CourseLearnView({
+  courseId,
+  apiPrefix = "",
+  basePath = "/learn",
+  backHref = "/student",
+}: {
+  courseId: number;
+  apiPrefix?: string;
+  basePath?: string;
+  backHref?: string;
+}) {
   const { t } = useLanguage();
+  const isAcademy = apiPrefix === "/teacher-academy";
   const [state, setState] = useState<State>({ kind: "loading" });
 
   useEffect(() => {
@@ -24,8 +35,8 @@ export function CourseLearnView({ courseId }: { courseId: number }) {
     (async () => {
       try {
         const [content, progress] = await Promise.all([
-          getCourseContent(courseId),
-          getCourseProgress(courseId),
+          isAcademy ? getAcademyCourseContent(courseId) : getCourseContent(courseId),
+          getCourseProgress(courseId, apiPrefix),
         ]);
         if (!cancelled) setState({ kind: "ready", content, progress });
       } catch (err) {
@@ -40,7 +51,7 @@ export function CourseLearnView({ courseId }: { courseId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [courseId]);
+  }, [courseId, apiPrefix, isAcademy]);
 
   if (state.kind === "loading") {
     return <Centered>{t.learn.loading}</Centered>;
@@ -53,8 +64,8 @@ export function CourseLearnView({ courseId }: { courseId: number }) {
       <section className="section">
         <div className="container student-empty">
           <p className="filter-empty">{t.learn.notEnrolled}</p>
-          <Button href="/courses" variant="primary">
-            {t.student.browseCourses}
+          <Button href={isAcademy ? "/teacher-academy/courses" : "/courses"} variant="primary">
+            {isAcademy ? t.academy.browseCourses : t.student.browseCourses}
           </Button>
         </div>
       </section>
@@ -77,7 +88,7 @@ export function CourseLearnView({ courseId }: { courseId: number }) {
             <span className="eyebrow">{content.course.title}</span>
             <h1 className="student-dash-title">{t.student.myCourses}</h1>
           </div>
-          <Link href="/student" className="student-viewall">
+          <Link href={backHref} className="student-viewall">
             {t.learn.backToDashboard}
           </Link>
         </div>
@@ -88,7 +99,7 @@ export function CourseLearnView({ courseId }: { courseId: number }) {
             label={`${progress.completedLessons}/${progress.totalLessons} ${t.student.lessonsDone}`}
           />
           {nextLesson && (
-            <Button href={`/learn/${courseId}/lesson/${nextLesson}`} variant="primary" size="sm">
+            <Button href={`${basePath}/${courseId}/lesson/${nextLesson}`} variant="primary" size="sm">
               {t.student.continueLearning}
             </Button>
           )}
@@ -104,7 +115,7 @@ export function CourseLearnView({ courseId }: { courseId: number }) {
                   return (
                     <li key={lesson.id}>
                       <Link
-                        href={`/learn/${courseId}/lesson/${lesson.id}`}
+                        href={`${basePath}/${courseId}/lesson/${lesson.id}`}
                         className={`learn-lesson-row learn-lesson-${status}`}
                       >
                         <span className="learn-lesson-icon" aria-hidden="true">

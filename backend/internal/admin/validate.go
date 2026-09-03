@@ -6,7 +6,14 @@ import (
 )
 
 func trimReq(s string) string { return strings.TrimSpace(s) }
-func itoa(v int64) string     { return strconv.FormatInt(v, 10) }
+
+func orEmpty(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+func itoa(v int64) string { return strconv.FormatInt(v, 10) }
 
 // Pure decision helpers — no DB, no HTTP — so they can be unit-tested in
 // isolation. The service wires repository lookups to these.
@@ -16,6 +23,7 @@ var assignmentTypes = map[string]bool{"text": true, "code": true, "quiz": true, 
 var assignmentLanguages = map[string]bool{"python": true, "javascript": true, "go": true, "plaintext": true}
 var lessonTypes = map[string]bool{"text": true, "video": true, "code": true, "quiz": true, "project": true}
 var courseDifficulty = map[string]bool{"beginner": true, "intermediate": true, "advanced": true}
+var courseAudiences = map[string]bool{"student": true, "teacher": true, "both": true}
 var userRoles = map[string]bool{"student": true, "teacher": true, "parent": true, "admin": true}
 
 const minPasswordLen = 8
@@ -135,6 +143,13 @@ func (req UpdateCourseRequest) fields() map[string]any {
 	putInt(m, "duration_lessons", req.DurationLessons)
 	putInt(m, "projects_count", req.ProjectsCount)
 	putNullableStr(m, "difficulty", req.Difficulty)
+	// audience is NOT NULL with a CHECK — only set it when a real value is
+	// given (an empty string from the admin form means "unchanged").
+	if req.Audience != nil {
+		if v := strings.TrimSpace(*req.Audience); v != "" {
+			m["audience"] = v
+		}
+	}
 	putBool(m, "is_published", req.IsPublished)
 	putInt(m, "position", req.Position)
 	return m

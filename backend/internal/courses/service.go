@@ -14,6 +14,7 @@ import (
 type repository interface {
 	List(ctx context.Context, filter ListFilter) ([]Course, error)
 	GetByID(ctx context.Context, id int64) (Course, error)
+	GetByIDAny(ctx context.Context, id int64) (Course, error)
 	GetBySlug(ctx context.Context, slug string) (Course, error)
 }
 
@@ -60,7 +61,21 @@ func (s *Service) GetBySlug(ctx context.Context, slug string) (Response, error) 
 // GetContent builds the GET /courses/:id/content aggregate: the course plus
 // every module, each with its own published lessons nested inline.
 func (s *Service) GetContent(ctx context.Context, id int64) (ContentResponse, error) {
-	course, err := s.repo.GetByID(ctx, id)
+	return s.buildContent(ctx, id, false)
+}
+
+// GetContentAny is GetContent that also serves Teacher Academy courses — for
+// the academy package's own /teacher-academy/courses/:id/content endpoint.
+func (s *Service) GetContentAny(ctx context.Context, id int64) (ContentResponse, error) {
+	return s.buildContent(ctx, id, true)
+}
+
+func (s *Service) buildContent(ctx context.Context, id int64, anyAudience bool) (ContentResponse, error) {
+	get := s.repo.GetByID
+	if anyAudience {
+		get = s.repo.GetByIDAny
+	}
+	course, err := get(ctx, id)
 	if errors.Is(err, ErrNotFound) {
 		return ContentResponse{}, httpx.NotFound("COURSE_NOT_FOUND", "Course not found")
 	}

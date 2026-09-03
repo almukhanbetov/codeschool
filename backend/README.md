@@ -1,8 +1,10 @@
 # CODESCHOOL Backend
 
-Go + Gin + pgx/v5 (`pgxpool`) REST API over PostgreSQL 17. No ORM — plain, parameterized SQL. Modular monolith: one API binary, one domain package per resource (`programs`, `levels`, `courses`, `modules`, `lessons`, `users`, `auth`, `enrollments`, `assignments`, `progress`, `submissions`, `groups`, `parents`, `admin`, `quizzes`, `runs`), plus a second small binary `cmd/runner` (the sandboxed code executor, using `internal/sandbox`).
+Go + Gin + pgx/v5 (`pgxpool`) REST API over PostgreSQL 17. No ORM — plain, parameterized SQL. Modular monolith: one API binary, one domain package per resource (`programs`, `levels`, `courses`, `modules`, `lessons`, `users`, `auth`, `enrollments`, `assignments`, `progress`, `submissions`, `groups`, `parents`, `admin`, `quizzes`, `runs`, `academy`), plus a second small binary `cmd/runner` (the sandboxed code executor, using `internal/sandbox`).
 
-This stage adds the **code runner**. A dedicated, sandboxed `runner` service (`cmd/runner` + `internal/sandbox`, its own image `Dockerfile.runner`) executes student Python / JavaScript / Go in isolation; the backend `internal/runs` package authorizes the student, forwards the code, records every execution (attempt history, `code_runs`), serves the visible sample tests, and runs the hidden tests to **auto-grade** a code submission (`assignment_tests`, migrations `00023`–`00024`). A test-graded `code` assignment is finalized `passed` / `failed` with no teacher, like a quiz. The earlier `assignments.language` (migration `00022`) drives both the frontend Monaco editor and the runner's language mode.
+This stage adds the **Teacher Academy** (`internal/academy`) — a teacher's own professional learning, built by **reusing the entire LMS engine** (courses / modules / lessons / assignments / quiz / code runner / lesson progress / submissions). The only new schema is `courses.audience` (`student` / `teacher` / `both`, migration `00025`, CHECK-constrained). Public catalog queries hide `audience = 'teacher'`; a new `/api/v1/teacher-academy/*` route group (`RequireRole("teacher")`) carries the audience-aware catalog / enrolment / dashboard endpoints **and re-mounts the existing student-flow learning handlers under the prefix**. Enrolment (`enrollments.student_id` = the teacher's id — the column just FKs `users`) is the real access boundary: a teacher can only ever be enrolled in an academy course. Methodology / project submissions are stored in the same `submissions` table and reviewed by **admin** via `/api/v1/admin/academy/*` (audited); quiz / code assignments auto-grade through the existing engines.
+
+The earlier **code runner**: a dedicated, sandboxed `runner` service (`cmd/runner` + `internal/sandbox`, its own image `Dockerfile.runner`) executes student Python / JavaScript / Go in isolation; the backend `internal/runs` package authorizes the student, forwards the code, records every execution (`code_runs`), serves visible sample tests, and runs hidden tests to **auto-grade** a code submission (`assignment_tests`, migrations `00023`–`00024`). `assignments.language` (migration `00022`) drives the Monaco editor + the runner's language mode.
 
 The **quiz engine** (`internal/quizzes`) covers admin authoring of quiz settings / questions / options, student attempts with server-side automatic scoring, attempt history, and read-only teacher / parent views; quiz assignments never touch `submissions`, and a lesson with a quiz can only be completed once the student passes it. The **admin panel API** (`internal/admin`, all routes `role = admin`) covers full CRUD over users, parent-child links, the catalog, and groups, plus a read-only **audit log**. See the root README.
 
@@ -52,7 +54,7 @@ goose -dir migrations postgres "$DATABASE_URL" status   # show applied/pending
 goose -dir migrations postgres "$DATABASE_URL" down     # roll back one migration
 ```
 
-Schema: `programs → levels → courses → modules → lessons` (each a `BIGINT` FK to its parent, `ON DELETE CASCADE`). Plus `users` (`00006`) and `refresh_tokens` (`00007`, FK → `users`, `ON DELETE CASCADE`).
+Schema: `programs → levels → courses → modules → lessons` (each a `BIGINT` FK to its parent, `ON DELETE CASCADE`). Plus `users` (`00006`) and `refresh_tokens` (`00007`, FK → `users`, `ON DELETE CASCADE`). `courses.audience` (`00025`) is `NOT NULL DEFAULT 'student'`, `CHECK (audience IN ('student', 'teacher', 'both'))` — public catalog queries add `AND audience <> 'teacher'`; the Teacher Academy shows `teacher` + `both`.
 
 `users` allows a NULL email **or** a NULL phone but not both (a `CHECK` constraint), and each identifier is unique only where present (partial unique indexes on `lower(email)` / `phone`) — empty strings are never stored in place of NULL.
 
@@ -227,7 +229,26 @@ Base path: `/api/v1`. Every success response is `{"data": ...}`; every error is 
 | catalog | `GET|POST /admin/{programs,levels,courses,modules,lessons,assignments}` + `GET|PATCH|DELETE .../:id`. List filters: `?programId=` (levels), `?levelId=&published=` (courses), `?courseId=` (modules), `?moduleId=` (lessons), `?lessonId=` (assignments) |
 | groups | `GET /admin/groups?teacherId=&courseId=&status=` · `POST /admin/groups` `{courseId, teacherId, ...}` (teacher role-checked) · `GET|PATCH|DELETE /admin/groups/:id` · `GET|POST /admin/groups/:id/students` · `DELETE /admin/groups/:id/students/:studentId` |
 
-**Semantics.** `PATCH` bodies are sparse — only the fields present are changed (an empty string clears a nullable text column). Deletes rely on the schema's `ON DELETE CASCADE` (dropping a program removes its whole subtree; dropping a user removes their enrollments / submissions / memberships / links / owned groups). Guards: an admin cannot delete or deactivate **their own** account, and the **last active admin** cannot be removed or demoted. Adding a student to a group reuses the teacher-stage transaction (membership + guaranteed active enrollment, `max_students` enforced). Duplicate slug / email / phone → `409`; a bad foreign key or enum → `400`. Every successful mutation writes one `admin_audit_log` row.
+**Semantics.** `PATCH` bodies are sparse — only the fields present are changed (an empty string clears a nullable text column). Deletes rely on the schema's `ON DELETE CASCADE` (dropping a program removes its whole subtree; dropping a user removes their enrollments / submissions / memberships / links / owned groups). Guards: an admin cannot delete or deactivate **their own** account, and the **last active admin** cannot be removed or demoted. Adding a student to a group reuses the teacher-stage transaction (membership + guaranteed active enrollment, `max_students` enforced). Duplicate slug / email / phone → `409`; a bad foreign key or enum → `400`. Every successful mutation writes one `admin_audit_log` row. A course carries `audience` (`student` / `teacher` / `both`) — set it to make a Teacher Academy course.
+
+### Teacher Academy (`internal/academy`)
+
+The teacher's own professional learning — **no new course engine**. `courses.audience` (migration `00025`) is the only new metadata; everything else (modules / lessons / assignments / quiz / code runner / lesson progress / submissions) is reused.
+
+**Teacher** (auth + role `teacher`):
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/v1/teacher-academy/courses` | published `audience ∈ (teacher, both)` courses + `enrolled` flag |
+| GET | `/api/v1/teacher-academy/courses/:id/content` | the module/lesson tree (academy course) |
+| POST | `/api/v1/teacher-academy/courses/:id/enroll` | teacher id from the token; `audience` checked; duplicate → `409` |
+| GET | `/api/v1/teacher-academy/me/courses` | enrolled academy courses + progress + `certificateEligible` |
+| GET | `/api/v1/teacher-academy/dashboard` | "My learning" roll-up |
+| … | `/api/v1/teacher-academy/lessons/:id/start`\|`complete`, `.../assignments/:id/submission`\|`submit`\|`run`\|`code/submit`\|`quiz/attempts`, `.../quiz/attempts/:id`, `.../me/courses/:id/progress` | **the same student-flow handlers**, re-mounted under the prefix with the teacher-role guard |
+
+The learning endpoints work because the student-flow services are user-id-based (they check *enrolment*, not *role*) — a teacher enrolled in an academy course passes; a student never can (they can't enrol in a `teacher` course, and the prefixed routes require `role = teacher`).
+
+**Admin** (auth + role `admin`, audited): `GET /api/v1/admin/academy/learners`, `GET /api/v1/admin/academy/submissions?status=`, `GET /api/v1/admin/academy/submissions/:id`, `POST /api/v1/admin/academy/submissions/:id/review` `{score, feedback, status}`. Review reuses `submissions.TeacherReview` (which carries no group-ownership check — ownership lives in the `groups` package), so admins can grade a methodology/project submission that has no group. Admin also creates academy courses through the normal catalog CRUD (`audience` field).
 
 ### Code runner (`internal/runs` + `cmd/runner` + `internal/sandbox`)
 
@@ -319,11 +340,11 @@ The `auth` suite additionally covers password hashing, JWT sign/verify/expiry, r
 
 The `quizzes` package adds pure **scoring** tests; the `runs` package adds pure **grading** tests (line-trailing-whitespace-tolerant output comparison, weighted percent, timeout/runner-error fail a test, percent → points scaling with rounding); the `sandbox` package really executes Python (hello / stdin / non-zero exit / **wall-clock timeout** / **output truncation** / network probe) and — when the toolchains are reachable — JavaScript and Go; and `progress` tests that a failed quiz **or** a failed test-graded code assignment blocks lesson completion while a passing one allows it.
 
-Seven integration tests run against a real Postgres — skipped unless `TEST_DATABASE_URL` is set. Each inserts and cleans up its own throwaway fixtures and does not touch seed data:
+Eight integration tests run against a real Postgres — skipped unless `TEST_DATABASE_URL` is set. Each inserts and cleans up its own throwaway fixtures and does not touch seed data:
 
 ```bash
 TEST_DATABASE_URL=postgres://codeschool:codeschool@localhost:5432/codeschool?sslmode=disable \
-  go test ./internal/courses/... ./internal/progress/... ./internal/groups/... ./internal/parents/... ./internal/admin/... ./internal/quizzes/... ./internal/runs/... -run "Repository|FullFlow" -v
+  go test ./internal/courses/... ./internal/progress/... ./internal/groups/... ./internal/parents/... ./internal/admin/... ./internal/quizzes/... ./internal/runs/... ./internal/academy/... -run "Repository|FullFlow" -v
 ```
 
 - `courses` — the *published-only* filter on `GET /courses`.
@@ -333,6 +354,7 @@ TEST_DATABASE_URL=postgres://codeschool:codeschool@localhost:5432/codeschool?ssl
 - `admin` — the full program → assignment CRUD chain, duplicate-slug / bad-FK / bad-enum rejection, the assignment `language` round-trip + invalid-language rejection, role-checked parent links + group teacher assignment, group membership (+ auto-enrollment, `max_students`), the self / last-admin guards, audit rows written, and `ON DELETE CASCADE` on a program drop.
 - `quizzes` — authoring (question on a non-quiz rejected, bad `pass_percent`, second correct option on `single_choice` rejected, audit rows), the attempt flow (non-enrolled / non-quiz blocked, resume returns the same attempt, foreign question/option rejected, `single_choice` needs exactly one selection, another student's attempt / double-submit rejected), fail-then-pass scoring across two attempts, the progress `CountPassedAssignments` gate, and question-with-history deactivating instead of deleting.
 - `runs` — a fake runner drives: free run + persisted history, per-student throttle, non-enrolled / non-code / text-assignment rejection, visible-only test payload (hidden not leaked), wrong-solution auto-grade `failed` (hidden test I/O not exposed) then correct-solution `passed` with a full points score, the submission row ends `passed`, the `AssignmentIDsWithTests` / `CountPassedForAssignments` progress gate, and audit rows for test authoring.
+- `academy` — the academy catalog shows only `teacher`/`both` courses (not `student`); enrolment rejects a student-audience course and a duplicate; content is served for a teacher course; a project submission goes through the reused `submissions` engine and is admin-reviewed (`passed`, score, audit row); a non-academy submission id is rejected; my-courses / dashboard roll-ups.
 
 ## Logging & shutdown
 
@@ -343,5 +365,7 @@ Startup logs `database connected` and `server listening on :PORT` — never secr
 AI review, certificates, payments, notifications, analytics — see the root README. Written submissions keep **one current row** per (student, assignment); quizzes and code runs keep history. If a lesson was completed and the teacher later marks its assignment `failed`, the lesson progress is **not** rolled back. The parent flow is read-only. The admin panel has no bulk import, no soft-delete / undo for catalog/user rows, and no per-field audit diff.
 
 **Quiz limitations.** No question snapshots, no shuffle, no partial credit, no timed quizzes, no question bank, no random quiz generation.
+
+**Teacher Academy limitations.** No mentor role — methodology/project review is done by an admin. Academy submissions live in the `submissions` table with `student_id` = the teacher's id (the column just FKs `users`); the name is a historical artefact, not a constraint. No certificates yet — `certificateEligible` is derived (`enrollment.status = 'completed'`), never persisted. `courses.audience` is coarse (one flag per course); `/courses/:id/modules` and `/modules/:id/lessons` still don't audience-check (only the course list + single-course + content endpoints do), so a determined student could read a teacher course's module/lesson *titles* by guessing ids — not the point of a public catalog, documented as a known gap.
 
 **Code-runner limitations.** Three languages, single file, stdin/stdout only — no arguments, no packages / imports beyond each language's standard library (network is off), no interactive input, no multi-file projects. Isolation is container + `ulimit` + wall-clock timeout + output caps + non-root + no-network + `cap_drop ALL` + `read_only` rootfs — good for a trusted classroom, **not** a gVisor / seccomp / VM jail for anonymous public submissions. `go run` is compile-then-run (~250 ms warm; shared tmpfs build cache). Output comparison is exact after trailing-whitespace trimming — no regex / float tolerance / custom checkers. The per-student run throttle is in-memory per API instance. Refresh-token cleanup and login rate limiting remain future hardening.

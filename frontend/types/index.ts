@@ -474,6 +474,7 @@ export interface AdminTranslations {
   navGroups: string;
   navLinks: string;
   navAudit: string;
+  navAcademy: string;
   backToPanel: string;
   // overview
   ovUsers: string;
@@ -654,6 +655,54 @@ export interface QuizTranslations {
   attemptNumber: string;
 }
 
+export interface AcademyTranslations {
+  navTitle: string;
+  heroTitle: string;
+  heroLead: string;
+  heroCta: string;
+  tracksTitle: string;
+  benefitsTitle: string;
+  benefitMethodology: string;
+  benefitPractice: string;
+  benefitAutoTests: string;
+  benefitCode: string;
+  benefitProgress: string;
+  benefitCertificate: string;
+  browseCourses: string;
+  myLearning: string;
+  continueLearning: string;
+  startLearning: string;
+  enroll: string;
+  enrolling: string;
+  enrolled: string;
+  coursesInProgress: string;
+  coursesCompleted: string;
+  totalProgress: string;
+  assessmentsRemaining: string;
+  courseComplete: string;
+  certificateReady: string;
+  lessonsLabel: string;
+  practicalAssignment: string;
+  submitted: string;
+  underReview: string;
+  passed: string;
+  needsWork: string;
+  backToAcademy: string;
+  backToDashboard: string;
+  noCourses: string;
+  loginAsTeacher: string;
+  // admin academy
+  adminTitle: string;
+  adminLearners: string;
+  adminReviewQueue: string;
+  adminNoPending: string;
+  adminReview: string;
+  adminMarkPassed: string;
+  adminMarkFailed: string;
+  fAudience: string;
+  tracks: { title: string; text: string }[];
+}
+
 export interface Translations {
   meta: { title: string };
   nav: NavTranslations;
@@ -665,6 +714,7 @@ export interface Translations {
   teach: TeachTranslations;
   family: FamilyTranslations;
   admin: AdminTranslations;
+  academy: AcademyTranslations;
   hero: HeroTranslations;
   path: PathTranslations;
   directions: DirectionsTranslations;
@@ -787,6 +837,8 @@ export interface Level {
 
 export type CourseDifficulty = "beginner" | "intermediate" | "advanced";
 
+export type CourseAudience = "student" | "teacher" | "both";
+
 export interface Course {
   id: number;
   levelId: number;
@@ -800,6 +852,7 @@ export interface Course {
   durationLessons: number | null;
   projectsCount: number | null;
   difficulty: CourseDifficulty | null;
+  audience: CourseAudience;
 }
 
 export interface Module {
@@ -829,6 +882,79 @@ export interface ModuleWithLessons extends Module {
 export interface CourseContent {
   course: Course;
   modules: ModuleWithLessons[];
+}
+
+/* ---- Teacher Academy (backend/internal/academy) ---- */
+
+export interface AcademyCourseCard {
+  id: number;
+  title: string;
+  slug: string;
+  shortDescription: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  difficulty: CourseDifficulty | null;
+  audience: CourseAudience;
+  totalLessons: number;
+  enrolled: boolean;
+}
+
+export interface AcademyMyCourse {
+  courseId: number;
+  title: string;
+  slug: string;
+  shortDescription: string | null;
+  imageUrl: string | null;
+  difficulty: CourseDifficulty | null;
+  enrollmentStatus: "active" | "completed";
+  enrolledAt: string;
+  completedAt: string | null;
+  completedLessons: number;
+  totalLessons: number;
+  progressPercent: number;
+  courseCompleted: boolean;
+  certificateEligible: boolean;
+}
+
+export interface AcademyDashboard {
+  coursesInProgress: number;
+  coursesCompleted: number;
+  totalCourses: number;
+  overallPercent: number;
+  courses: AcademyMyCourse[];
+}
+
+export interface AcademyLearnerRow {
+  teacherId: number;
+  name: string;
+  email: string | null;
+  coursesEnrolled: number;
+  coursesCompleted: number;
+}
+
+export interface AcademySubmissionRow {
+  id: number;
+  status: SubmissionStatus;
+  score: number | null;
+  submittedAt: string | null;
+  checkedAt: string | null;
+  teacherId: number;
+  teacherName: string;
+  assignmentId: number;
+  assignmentType: AssignmentType;
+  assignmentName: string;
+  points: number;
+  lessonTitle: string;
+  courseId: number;
+  courseTitle: string;
+}
+
+export interface AcademySubmissionDetail extends AcademySubmissionRow {
+  answer: string | null;
+  code: string | null;
+  teacherFeedback: string | null;
+  assignmentDescription: string | null;
+  assignmentLanguage: CodeLanguage | null;
 }
 
 export interface CourseListFilter {
@@ -1284,6 +1410,7 @@ export interface AdminCourse {
   durationLessons: number | null;
   projectsCount: number | null;
   difficulty: string | null;
+  audience: CourseAudience;
   isPublished: boolean;
   position: number;
   createdAt: string;

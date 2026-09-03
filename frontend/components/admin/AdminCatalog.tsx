@@ -160,6 +160,7 @@ export function AdminCatalog() {
             description: r.description,
             imageUrl: r.imageUrl,
             difficulty: r.difficulty,
+            audience: r.audience,
             ageFrom: r.ageFrom,
             ageTo: r.ageTo,
             durationLessons: r.durationLessons,
@@ -179,6 +180,12 @@ export function AdminCatalog() {
               type: "select",
               options: ["beginner", "intermediate", "advanced"].map((d) => ({ value: d, label: d })),
             },
+            {
+              key: "audience",
+              label: t.academy.fAudience,
+              type: "select",
+              options: ["student", "teacher", "both"].map((v) => ({ value: v, label: v })),
+            },
             numberField("ageFrom", a.fAgeFrom),
             numberField("ageTo", a.fAgeTo),
             numberField("durationLessons", a.fDuration),
@@ -190,6 +197,7 @@ export function AdminCatalog() {
             { label: "ID", render: (r) => r.id },
             titleCol<AdminCourse>(),
             { label: a.fSlug, render: (r) => <code>{r.slug}</code> },
+            { label: t.academy.fAudience, render: (r) => r.audience },
             boolCol((r) => (r as AdminCourse).isPublished) as ColumnDef<AdminCourse>,
           ]}
           extraAction={{

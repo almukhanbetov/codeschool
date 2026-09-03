@@ -35,6 +35,10 @@ func (f *fakeRepository) GetByID(_ context.Context, id int64) (Course, error) {
 	return Course{}, ErrNotFound
 }
 
+func (f *fakeRepository) GetByIDAny(ctx context.Context, id int64) (Course, error) {
+	return f.GetByID(ctx, id)
+}
+
 func (f *fakeRepository) GetBySlug(_ context.Context, slug string) (Course, error) {
 	for _, c := range f.courses {
 		if c.Slug == slug {

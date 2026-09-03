@@ -20,6 +20,7 @@ type Response struct {
 	DurationLessons  *int    `json:"durationLessons"`
 	ProjectsCount    *int    `json:"projectsCount"`
 	Difficulty       *string `json:"difficulty"`
+	Audience         string  `json:"audience"`
 }
 
 func toResponse(c Course) Response {
@@ -36,6 +37,7 @@ func toResponse(c Course) Response {
 		DurationLessons:  c.DurationLessons,
 		ProjectsCount:    c.ProjectsCount,
 		Difficulty:       c.Difficulty,
+		Audience:         c.Audience,
 	}
 }
 

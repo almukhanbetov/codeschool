@@ -308,6 +308,9 @@ func (s *Service) CreateCourse(ctx context.Context, adminID int64, req CreateCou
 	if d := normStr(req.Difficulty); d != nil && !courseDifficulty[*d] {
 		return CourseRow{}, invalid("invalid difficulty")
 	}
+	if a := normStr(req.Audience); a != nil && !courseAudiences[*a] {
+		return CourseRow{}, invalid("audience must be student, teacher or both")
+	}
 	req.Title, req.Slug = trimReq(req.Title), trimReq(req.Slug)
 	c, err := s.repo.CreateCourse(ctx, req)
 	if err != nil {
@@ -322,6 +325,9 @@ func (s *Service) UpdateCourse(ctx context.Context, adminID, id int64, req Updat
 	}
 	if d := normStr(req.Difficulty); req.Difficulty != nil && d != nil && !courseDifficulty[*d] {
 		return CourseRow{}, invalid("invalid difficulty")
+	}
+	if v := trimReq(orEmpty(req.Audience)); v != "" && !courseAudiences[v] {
+		return CourseRow{}, invalid("audience must be student, teacher or both")
 	}
 	c, err := s.repo.UpdateCourse(ctx, id, req.fields())
 	if err != nil {

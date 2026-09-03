@@ -10,6 +10,7 @@ import { AssignmentPanel } from "@/components/learn/AssignmentPanel";
 import {
   ApiError,
   completeLesson,
+  getAcademyCourseContent,
   getCourseContent,
   getCourseProgress,
   getLessonAssignments,
@@ -43,11 +44,20 @@ type State =
 export function LessonLearnView({
   courseId,
   lessonId,
+  apiPrefix = "",
+  basePath = "/learn",
+  notEnrolledHref = "/courses",
 }: {
   courseId: number;
   lessonId: number;
+  /** "" for the student flow, "/teacher-academy" for the academy */
+  apiPrefix?: string;
+  /** URL base for lesson links, e.g. "/learn" or "/teacher-academy/learn" */
+  basePath?: string;
+  notEnrolledHref?: string;
 }) {
   const { t } = useLanguage();
+  const isAcademy = apiPrefix === "/teacher-academy";
   const [state, setState] = useState<State>({ kind: "loading" });
   const [lessonStatus, setLessonStatus] = useState<LessonProgressStatus>("not_started");
   const [submittedIds, setSubmittedIds] = useState<Set<number>>(new Set());
@@ -59,9 +69,9 @@ export function LessonLearnView({
   const load = useCallback(async () => {
     try {
       const [content, progress, assignments] = await Promise.all([
-        getCourseContent(courseId),
-        getCourseProgress(courseId),
-        getLessonAssignments(lessonId),
+        isAcademy ? getAcademyCourseContent(courseId) : getCourseContent(courseId),
+        getCourseProgress(courseId, apiPrefix),
+        getLessonAssignments(lessonId, apiPrefix),
       ]);
       const lesson = content.modules.flatMap((m) => m.lessons).find((l) => l.id === lessonId);
       if (!lesson) {
@@ -72,7 +82,7 @@ export function LessonLearnView({
       // quiz_attempts) — the AssignmentPanel loads that itself.
       const submissionEntries = await Promise.all(
         assignments.map(async (a) =>
-          [a.id, a.assignmentType === "quiz" ? null : await getMySubmission(a.id)] as const
+          [a.id, a.assignmentType === "quiz" ? null : await getMySubmission(a.id, apiPrefix)] as const
         )
       );
       const submissions = new Map(submissionEntries);
@@ -91,7 +101,7 @@ export function LessonLearnView({
       else if (err instanceof ApiError && err.status === 404) setState({ kind: "notFound" });
       else setState({ kind: "error" });
     }
-  }, [courseId, lessonId]);
+  }, [courseId, lessonId, apiPrefix, isAcademy]);
 
   useEffect(() => {
     // Data fetch on mount / when the lesson changes — the setState calls it
@@ -106,13 +116,13 @@ export function LessonLearnView({
     if (startedFor.current === lessonId) return;
     startedFor.current = lessonId;
     if (lessonStatus === "not_started") {
-      startLesson(lessonId)
+      startLesson(lessonId, apiPrefix)
         .then(() => setLessonStatus("in_progress"))
         .catch(() => {
           /* non-fatal: the page still works */
         });
     }
-  }, [state.kind, lessonId, lessonStatus]);
+  }, [state.kind, lessonId, lessonStatus, apiPrefix]);
 
   const markSubmitted = useCallback((assignmentId: number, submitted: boolean) => {
     setSubmittedIds((prev) => {
@@ -128,7 +138,7 @@ export function LessonLearnView({
     setCompleting(true);
     setCompleteError(null);
     try {
-      const res = await completeLesson(lessonId);
+      const res = await completeLesson(lessonId, apiPrefix);
       setLessonStatus("completed");
       setCourseDone(res.enrollmentCompleted);
       await load(); // refresh sidebar + progress
@@ -149,8 +159,8 @@ export function LessonLearnView({
       <section className="section">
         <div className="container student-empty">
           <p className="filter-empty">{t.learn.notEnrolled}</p>
-          <Button href="/courses" variant="primary">
-            {t.student.browseCourses}
+          <Button href={notEnrolledHref} variant="primary">
+            {isAcademy ? t.academy.browseCourses : t.student.browseCourses}
           </Button>
         </div>
       </section>
@@ -171,7 +181,7 @@ export function LessonLearnView({
     <section className="section learn-section">
       <div className="container">
         <div className="learn-topbar">
-          <Link href={`/learn/${courseId}`} className="student-viewall">
+          <Link href={`${basePath}/${courseId}`} className="student-viewall">
             {t.learn.backToCourse}
           </Link>
           <div className="learn-topbar-progress">
@@ -197,7 +207,7 @@ export function LessonLearnView({
                       return (
                         <li key={l.id}>
                           <Link
-                            href={`/learn/${courseId}/lesson/${l.id}`}
+                            href={`${basePath}/${courseId}/lesson/${l.id}`}
                             className={`learn-lesson-row learn-lesson-${s}${active ? " active" : ""}`}
                           >
                             <span className="learn-lesson-icon" aria-hidden="true">
@@ -252,6 +262,8 @@ export function LessonLearnView({
                     key={a.id}
                     assignment={a}
                     courseId={courseId}
+                    apiPrefix={apiPrefix}
+                    basePath={basePath}
                     initialSubmission={submissions.get(a.id) ?? null}
                     onSubmittedChange={(sub) => markSubmitted(a.id, sub)}
                   />
@@ -288,7 +300,7 @@ export function LessonLearnView({
             </div>
 
             <div className="learn-nav-bottom">
-              <Button href={`/learn/${courseId}`} variant="ghost" size="sm">
+              <Button href={`${basePath}/${courseId}`} variant="ghost" size="sm">
                 {t.learn.backToCourse}
               </Button>
             </div>

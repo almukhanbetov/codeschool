@@ -39,8 +39,15 @@ export function TeacherDashboard() {
   return (
     <section className="section">
       <div className="container">
-        <span className="eyebrow">{t.teach.dashTitle}</span>
-        <h1 className="student-dash-title">{greeting}</h1>
+        <div className="student-dash-head">
+          <div>
+            <span className="eyebrow">{t.teach.dashTitle}</span>
+            <h1 className="student-dash-title">{greeting}</h1>
+          </div>
+          <Link href="/teacher-academy/dashboard" className="student-viewall">
+            {t.academy.navTitle} →
+          </Link>
+        </div>
 
         {state.kind === "loading" && <p className="filter-empty">{t.teach.loading}</p>}
         {state.kind === "error" && <p className="auth-error">{t.teach.loadError}</p>}

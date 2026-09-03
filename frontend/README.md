@@ -169,6 +169,16 @@ No new dependency this stage. Execution happens in a backend-side sandboxed serv
 - **`components/admin/AdminTestsEditor.tsx`** — opened from the catalog's **Tests** action on `code` assignment rows (`EntityManager` `rowExtra`): a flat list of test cases with name / stdin / expected / hidden / weight / position, add / edit / delete.
 - New strings: `data/translations.ts` → `learn` (run / output / tests / grading) and `admin` (test editor), RU + KZ + EN. Only a `.runner-*` block was appended to `globals.css`.
 
+## Teacher Academy
+
+No new dependency. The academy reuses the LMS learning UI rather than forking it.
+
+- **Generalised (not copied) learning components** — `CourseLearnView`, `LessonLearnView`, `AssignmentPanel` (+ `QuizAssignmentPanel` / `CodeAssignmentPanel` / `TextAssignmentPanel`) and `QuizRunner` gained optional `apiPrefix` / `basePath` props (defaults `""` / `/learn` = unchanged student behaviour). `lib/api.ts` — the ~15 learn functions gained an optional trailing `prefix`; new `getTeacherAcademyCourses`, `enrollTeacherAcademyCourse`, `getMyAcademyCourses`, `getAcademyDashboard`, `getAcademyCourseContent`, and `adminAcademyApi` (learners / submissions / review).
+- **`components/academy/`** — `AcademyLanding` (public hero + 7 track cards + benefits), `AcademyDashboard` ("Моё обучение": in-progress / completed / overall %, per-course progress + continue), `AcademyCourses` (catalog + enroll).
+- **`components/admin/AdminAcademy.tsx`** — new `AdminShell` section (`/admin/academy`): learner-teacher table + methodology/project review queue with an inline pass/fail + score + feedback dialog. The catalog course form gains an **audience** `<select>` (`student` / `teacher` / `both`).
+- **Routes** — `app/teacher-academy/{page, dashboard, courses}` + `app/teacher-academy/learn/[courseId]/…` (mirrors `app/learn/…`, passing `apiPrefix="/teacher-academy"`) + `app/admin/academy`. The Footer's "Teacher Academy" link now points to `/teacher-academy`; `/teacher` (operational dashboard) is unchanged apart from a cross-link.
+- New `academy` translation block (RU + KZ + EN) + `admin.navAcademy`. Only an `.academy-*` block was appended to `globals.css`; Dark/Light and the design system are untouched.
+
 ## Placeholder routes
 
 `/courses` uses the same `.placeholder-*` visual language as the rest of the site.

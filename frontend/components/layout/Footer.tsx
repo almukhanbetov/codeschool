@@ -45,7 +45,7 @@ export function Footer() {
 
         <div className="footer-col">
           <h4>{t.footer.people}</h4>
-          <a href="#teachers">{t.footer.teacherAcademy}</a>
+          <a href="/teacher-academy">{t.footer.teacherAcademy}</a>
           <a href="#parents">{t.nav.parents}</a>
           <a href="#about">{t.footer.about}</a>
           <a href="#">{t.footer.contacts}</a>

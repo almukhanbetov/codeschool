@@ -19,9 +19,9 @@ Go Gin :8080  (modular monolith, no ORM)
 PostgreSQL 17 :5432 (container) / :5433 (host-mapped, see below)
 ```
 
-Auth, the **student learning flow**, the **teacher flow**, the **parent flow**, the **admin panel**, the **quiz engine**, and the Monaco **code editor** are all in place.
+Auth, the **student learning flow**, the **teacher flow**, the **parent flow**, the **admin panel**, the **quiz engine**, the Monaco **code editor**, and the sandboxed **code runner** (Python / JavaScript / Go, hidden tests, auto-grading) are all in place.
 
-This stage adds the **code runner**. A dedicated, sandboxed `runner` container executes student **Python / JavaScript / Go** in isolation — no internet, non-root, read-only rootfs, dropped Linux capabilities, hard pid / memory / cpu caps, plus a per-run wall-clock timeout, `ulimit`s and output caps. From the editor the student gets a **Run** button and an output pane (stdout / stderr / exit code / duration), a stdin box, and a list of **sample tests**. Every run is recorded (run history). An admin authors **hidden test cases**; **Submit for grading** runs them all, computes a weighted score and finalizes the submission `passed` / `failed` with no teacher — the same auto-grade model as a quiz. **Still no arbitrary tooling** — one file, standard library only, stdin/stdout only. See [What's not in this stage](#whats-not-in-this-stage).
+This stage adds the **Teacher Academy** — a teacher's *own* professional-development track, separate from the operational teacher dashboard at `/teacher` (groups / students / review). It is built by **reusing the whole LMS engine**: the only new schema is `courses.audience` (`student` / `teacher` / `both`). A teacher discovers academy courses at **`/teacher-academy`**, enrolls, and learns through the *same* lesson / quiz / code-runner UI (generalised, not copied) at `/teacher-academy/learn/…`; **`/teacher-academy/dashboard`** ("Моё обучение") tracks progress and completion. Methodology text lessons + a quiz + a Python code task + a **practical teaching assignment** ("plan a 45-minute lesson") make up the seeded track; the practical assignment is stored and **reviewed by an admin** at `/admin/academy`. Student- and parent-facing catalogs never show `teacher` courses; the backend enforces it. **No certificates yet** — just a `certificateEligible` read flag. See [What's not in this stage](#whats-not-in-this-stage).
 
 ## Project structure
 
@@ -93,7 +93,7 @@ Open http://localhost:3000.
 
 ## Seeds
 
-`backend/seeds/dev_seed.sql` is plain SQL, run manually, never automatically — see `backend/README.md`. It creates one program ("Computer Science Kids"), one level, and 6 courses reusing the names/ages already present in `frontend/data/*.ts` where they overlapped (Scratch Junior, Python Start, Robotics Arduino, AI Junior — plus "Основы алгоритмов" and "Web Development"), with 4 modules and 5 lessons under "Python Start", one text/code assignment each on three lessons, a fully-authored **quiz** ("Тест: Циклы Python", 5 questions, pass 70 %) on the "Цикл for" lesson, and two **code-runner test cases** (one visible, one hidden) on the "Hello, Kazakhstan!" Python assignment.
+`backend/seeds/dev_seed.sql` is plain SQL, run manually, never automatically — see `backend/README.md`. It creates one program ("Computer Science Kids"), one level, and 6 courses reusing the names/ages already present in `frontend/data/*.ts` where they overlapped (Scratch Junior, Python Start, Robotics Arduino, AI Junior — plus "Основы алгоритмов" and "Web Development"), with 4 modules and 5 lessons under "Python Start", one text/code assignment each on three lessons, a fully-authored **quiz** ("Тест: Циклы Python", 5 questions, pass 70 %) on the "Цикл for" lesson, and two **code-runner test cases** (one visible, one hidden) on the "Hello, Kazakhstan!" Python assignment. It also seeds the **Teacher Academy**: program "Teacher Academy" → course "Методика преподавания Python" (`audience = teacher`), 3 modules / 5 lessons — a text methodology lesson, a 3-question methodology **quiz**, a Python **code** task (2 tests) and a **practical teaching assignment** (a 45-minute lesson plan) — with `teacher@codeschool.local` enrolled.
 
 ## API
 
@@ -187,6 +187,20 @@ POST   /api/v1/admin/assignments/:id/quiz/questions
 PATCH|DELETE /api/v1/admin/quiz/questions/:id
 POST   /api/v1/admin/quiz/questions/:id/options
 PATCH|DELETE /api/v1/admin/quiz/options/:id
+
+# teacher academy (auth + role=teacher) — courses.audience is the only new schema
+GET    /api/v1/teacher-academy/courses                  audience teacher|both + `enrolled` flag
+GET    /api/v1/teacher-academy/courses/:id/content
+POST   /api/v1/teacher-academy/courses/:id/enroll
+GET    /api/v1/teacher-academy/me/courses               enrolled academy courses + progress
+GET    /api/v1/teacher-academy/dashboard
+# ... plus the student-flow learning routes re-mounted under /teacher-academy/*
+#     (lessons/:id/start|complete, assignments/:id/submission|submit|run|code/submit|quiz/attempts, ...)
+# teacher academy — admin (methodology/project review, audited)
+GET    /api/v1/admin/academy/learners
+GET    /api/v1/admin/academy/submissions                ?status=
+GET    /api/v1/admin/academy/submissions/:id
+POST   /api/v1/admin/academy/submissions/:id/review     {score, feedback, status}
 ```
 
 ## Frontend ↔ backend integration
@@ -260,6 +274,14 @@ PATCH|DELETE /api/v1/admin/quiz/options/:id
 - **Admin** — the catalog's assignment table shows a **Tests** action on `code` rows, opening `AdminTestsEditor`: a flat list of I/O test cases with name / stdin / expected / hidden / weight / position, add / edit / delete.
 - New strings under `data/translations.ts` → `learn` (run/output/tests) and `admin` (test editor), RU + KZ + EN. Only a `.runner-*` block was added to `globals.css`.
 
+## Teacher Academy on the frontend
+
+- **No copy-pasted learning components.** `CourseLearnView`, `LessonLearnView`, `AssignmentPanel` (+ its quiz / code / text sub-panels) and `QuizRunner` all gained optional `apiPrefix` / `basePath` props (default `""` / `/learn`); the ~15 `lib/api.ts` learn functions gained an optional trailing `prefix`. The academy pages pass `apiPrefix="/teacher-academy"` so the *same* components hit the prefixed backend routes.
+- **`/teacher-academy`** — public landing (`AcademyLanding`): hero ("Станьте преподавателем IT нового поколения"), 7 track cards, benefits, CTA. Distinct from the operational **`/teacher`** dashboard, which is untouched (it now just links across to the academy).
+- **`/teacher-academy/dashboard`** ("Моё обучение"), **`/teacher-academy/courses`** (catalog + enroll), **`/teacher-academy/learn/[courseId]`** / `…/lesson/[lessonId]` / `…/quiz/[assignmentId]` — all `RequireAuth roles={["teacher"]}`.
+- **`/admin/academy`** — new `AdminShell` section: learner-teacher table + a review queue for methodology/project submissions with an inline pass/fail + score + feedback dialog. The admin catalog course form gains an **audience** select.
+- New `academy` translation block (RU + KZ + EN) with the 7 track titles/blurbs; `admin.navAcademy`. Only an `.academy-*` block was added to `globals.css`.
+
 Frontend route guards are a **UX** boundary; the backend authorization on every protected API call is the real security boundary.
 
 **Security trade-off note:** the refresh token is an HttpOnly, `SameSite=Lax` cookie scoped to `/api/v1/auth` (never in `localStorage`, never in a response body), and the access token is memory-only — so neither is readable by page JavaScript (XSS can't exfiltrate them). `Secure` is off in local development (plain HTTP) and on in production. Because the cookie lives on the API origin, Next.js middleware/`proxy` can't read it, so route protection is client-side only (see above).
@@ -270,4 +292,6 @@ AI review, certificates, payments, notifications, file storage (MinIO), analytic
 
 **Code-runner limitations.** Python / JavaScript / Go only; **one file**, standard library only (network is off), stdin/stdout only — no command-line args, no interactive input, no multi-file projects, no external packages. Isolation is container + `cap_drop ALL` + non-root + read-only rootfs + no-network + `ulimit`s + wall-clock timeout + output caps — solid for a **trusted classroom**, not a gVisor/seccomp/VM jail for anonymous public code. `go run` compiles then runs (~250 ms warm, shared tmpfs build cache). Output matching is exact after trimming trailing whitespace — no regex / float tolerance / custom checkers. Hidden-test secrecy is best-effort (a student can still probe via free runs). The per-student run throttle is in-memory per API instance. The runner needs its Docker image (python/node/go); without it, `RUNNER_URL` unset → the runner endpoints return `503` and the rest of the app is unaffected.
 
-**Quiz limitations.** No question snapshots, no shuffle, no partial credit, no timed quizzes, no question bank. Refresh-token cleanup and login rate limiting remain future hardening. See `backend/README.md`'s own scope note.
+**Quiz limitations.** No question snapshots, no shuffle, no partial credit, no timed quizzes, no question bank.
+
+**Teacher Academy limitations.** No certificates (PDF or otherwise), no public teacher profiles, no ranking / gamification, no mentor role (methodology review is an admin task), no employer marketplace, no external accreditation — all explicitly deferred. Academy submissions reuse the `submissions` table (`student_id` holds the teacher's id — a naming artefact, not a constraint). `courses.audience` is one flag per course; `/courses/:id/modules` still isn't audience-gated, so module/lesson *titles* of a teacher course are reachable by guessing ids (the catalog list, single-course and content endpoints are gated). Refresh-token cleanup and login rate limiting remain future hardening. See `backend/README.md`'s own scope note.
