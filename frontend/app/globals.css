@@ -1324,3 +1324,51 @@ svg.lucide { display: inline-block; width: 1em; height: 1em; stroke-width: 2; }
 .cert-verify-fields dd { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
 
 .student-dash-links { display: flex; gap: 16px; flex-wrap: wrap; }
+
+/* ===== Public multi-page site: hero / breadcrumbs / back nav ===== */
+.page-hero { padding: 128px 0 56px; }
+.page-hero .eyebrow { margin-bottom: 14px; }
+.page-hero-title { font-size: clamp(2rem, 4vw, 3rem); line-height: 1.1; margin: 0 0 16px; }
+.page-hero-lead { max-width: 640px; font-size: 1.05rem; color: var(--text-secondary); }
+.page-hero-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 24px; }
+
+.breadcrumbs { margin-bottom: 20px; font-size: 0.85rem; }
+.breadcrumbs ol { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0; margin: 0; }
+.breadcrumbs li { display: inline-flex; align-items: center; gap: 6px; }
+.breadcrumbs a { color: var(--text-tertiary); transition: color .2s var(--ease); }
+.breadcrumbs a:hover { color: var(--text-primary); }
+.breadcrumbs [aria-current="page"] { color: var(--text-secondary); font-weight: 600; }
+.breadcrumbs-sep { color: var(--text-tertiary); }
+.breadcrumbs-bar { padding-top: 104px; }
+.breadcrumbs-bar .breadcrumbs { margin-bottom: 0; }
+.breadcrumbs-bar + .section { padding-top: 32px; }
+
+.back-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--accent); }
+.back-link:hover { text-decoration: underline; }
+.page-back { padding: 8px 0 96px; }
+
+.section-subtitle { font-size: 1.4rem; margin: 0 0 28px; }
+
+.direction-hero-icon {
+  width: 60px; height: 60px; margin-top: 28px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--accent);
+}
+.direction-hero-icon svg { width: 30px; height: 30px; }
+.direction-hero-tags { margin-top: 20px; }
+.direction-empty { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+.direction-all { margin-top: 28px; }
+
+.cert-verify-form { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; max-width: 520px; }
+.cert-verify-form input {
+  flex: 1; min-width: 220px; padding: 11px 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-primary);
+  font-family: var(--font-jetbrains-mono, monospace); letter-spacing: 0.04em;
+}
+
+.footer-lang { margin-top: 10px; }
+
+@media (max-width: 640px) {
+  .page-hero { padding-top: 104px; }
+  .breadcrumbs-bar { padding-top: 92px; }
+}

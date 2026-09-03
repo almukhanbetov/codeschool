@@ -12,23 +12,12 @@ import { StatsSection } from "@/components/sections/StatsSection";
 import { WhyUsSection } from "@/components/sections/WhyUsSection";
 import { PhilosophySection } from "@/components/sections/PhilosophySection";
 import { FinalCTASection } from "@/components/sections/FinalCTASection";
-import { getCourses } from "@/lib/api";
-import type { Course } from "@/types";
+import { loadCourses } from "@/lib/loadCourses";
 
 // Fetched server-side (this stays a Server Component) so CoursesSection
 // itself only needs "use client" for the filter's interactive state, not
 // for data loading. A backend outage degrades to an inline error message
-// inside the section — never silently substituted demo data, and never a
-// broken page (see CoursesSection's loadError prop).
-async function loadCourses(): Promise<{ courses: Course[]; loadError: boolean }> {
-  try {
-    const courses = await getCourses();
-    return { courses, loadError: false };
-  } catch {
-    return { courses: [], loadError: true };
-  }
-}
-
+// inside the section — never silently substituted demo data.
 export default async function HomePage() {
   const { courses, loadError } = await loadCourses();
 

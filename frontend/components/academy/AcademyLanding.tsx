@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/Button";
 import { Icon, type IconName } from "@/lib/icons";
+import { Breadcrumbs } from "@/components/public/Breadcrumbs";
 
 export function AcademyLanding() {
   const { t } = useLanguage();
@@ -27,6 +28,7 @@ export function AcademyLanding() {
     <>
       <section className="section academy-hero">
         <div className="container">
+          <Breadcrumbs items={[{ label: t.site.nav.academy }]} />
           <span className="eyebrow">{a.navTitle}</span>
           <h1 className="academy-hero-title">{a.heroTitle}</h1>
           <p className="academy-hero-lead">{a.heroLead}</p>

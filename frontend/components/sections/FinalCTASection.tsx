@@ -14,13 +14,13 @@ export function FinalCTASection() {
         <div ref={ref} className={`final-cta-inner ${className}`}>
           <h2>{t.finalcta.title}</h2>
           <div className="final-cta-row">
-            <Button href="#courses" variant="primary" size="lg">
+            <Button href="/courses" variant="primary" size="lg">
               {t.finalcta.cta1}
             </Button>
-            <Button href="/teacher" variant="secondary" size="lg">
+            <Button href="/for-teachers" variant="secondary" size="lg">
               {t.finalcta.cta2}
             </Button>
-            <Button href="#directions" variant="ghost" size="lg">
+            <Button href="/how-it-works" variant="ghost" size="lg">
               {t.finalcta.cta3}
             </Button>
           </div>

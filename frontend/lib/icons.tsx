@@ -37,6 +37,8 @@ import {
   Camera,
   PlayCircle,
   Link2,
+  ShieldCheck,
+  QrCode,
   type LucideIcon,
 } from "lucide-react";
 
@@ -76,6 +78,8 @@ export const icons = {
   "message-square-code": MessageSquareCode,
   user: User,
   "layout-dashboard": LayoutDashboard,
+  "shield-check": ShieldCheck,
+  "qr-code": QrCode,
   // lucide-react dropped brand/logo icons (trademark reasons); these are the
   // closest generic stand-ins for the prototype's Instagram/YouTube/LinkedIn links.
   instagram: Camera,

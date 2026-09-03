@@ -1,45 +1,49 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
-import { useScrollSpy } from "@/hooks/useScrollSpy";
 import { Icon } from "@/lib/icons";
-import { navItems } from "@/data/nav";
+import { headerNavItems } from "@/data/nav";
 import { ROLE_HOME } from "@/types";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Button } from "@/components/ui/Button";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 
+function isActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function Header() {
   const { t } = useLanguage();
   const { user, logout } = useAuth();
   const scrolled = useHeaderScroll();
-  const sectionIds = useMemo(() => navItems.map((item) => item.href.slice(1)), []);
-  const activeId = useScrollSpy(sectionIds);
+  const pathname = usePathname();
 
   return (
     <header className={`site-header${scrolled ? " scrolled" : ""}`}>
       <div className="container header-inner">
-        <a href="#hero" className="logo" aria-label="CODESCHOOL — home">
+        <Link href="/" className="logo" aria-label="CODESCHOOL — home">
           <span className="logo-mark" aria-hidden="true">
             <Icon name="code-xml" />
           </span>
           <span className="logo-text">CODESCHOOL</span>
-        </a>
+        </Link>
 
         <nav className="main-nav" aria-label="Main navigation">
-          {navItems.map((item) => (
-            <a
+          {headerNavItems.map((item) => (
+            <Link
               key={item.href}
               href={item.href}
-              className={`nav-link${activeId === item.href.slice(1) ? " active" : ""}`}
+              className={`nav-link${isActive(pathname, item.href) ? " active" : ""}`}
+              aria-current={isActive(pathname, item.href) ? "page" : undefined}
             >
-              {t.nav[item.key]}
-            </a>
+              {t.site.nav[item.key]}
+            </Link>
           ))}
         </nav>
 
@@ -68,7 +72,7 @@ export function Header() {
               {t.header.login}
             </Button>
           )}
-          <Button href="#courses" variant="primary" size="sm" className="header-cta">
+          <Button href="/courses" variant="primary" size="sm" className="header-cta">
             {t.header.cta}
           </Button>
           <MobileMenu />

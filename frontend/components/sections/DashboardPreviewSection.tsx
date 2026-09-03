@@ -51,7 +51,7 @@ export function DashboardPreviewSection() {
                 <span className="dashboard-lesson-num">{t.dashboard.lessonNum}</span>
                 <strong>{t.dashboard.lessonName}</strong>
               </div>
-              <Button href="#courses" variant="primary" size="sm">
+              <Button href="/courses" variant="primary" size="sm">
                 {t.dashboard.continue}
               </Button>
             </div>

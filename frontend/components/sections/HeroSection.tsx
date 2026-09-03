@@ -36,11 +36,11 @@ export function HeroSection() {
           <p className="hero-extra">{t.hero.extra}</p>
 
           <div className="hero-cta-row">
-            <Button href="#courses" variant="primary" size="lg">
+            <Button href="/courses" variant="primary" size="lg">
               <span>{t.hero.cta1}</span>
               <Icon name="arrow-right" aria-hidden="true" />
             </Button>
-            <Button href="/teacher" variant="secondary" size="lg">
+            <Button href="/for-teachers" variant="secondary" size="lg">
               {t.hero.cta2}
             </Button>
           </div>

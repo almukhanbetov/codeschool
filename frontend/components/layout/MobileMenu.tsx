@@ -36,7 +36,7 @@ export function MobileMenu() {
       <button
         type="button"
         className="mobile-menu-btn"
-        aria-label={t.nav.home}
+        aria-label={t.site.nav.courses}
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
@@ -57,10 +57,13 @@ export function MobileMenu() {
         </div>
 
         <nav className="mobile-nav" aria-label="Mobile navigation">
+          <Link href="/" className="mobile-nav-link" onClick={close}>
+            {t.site.home}
+          </Link>
           {navItems.map((item) => (
-            <a key={item.href} href={item.href} className="mobile-nav-link" onClick={close}>
-              {t.nav[item.key]}
-            </a>
+            <Link key={item.href} href={item.href} className="mobile-nav-link" onClick={close}>
+              {t.site.nav[item.key]}
+            </Link>
           ))}
         </nav>
 
@@ -86,7 +89,7 @@ export function MobileMenu() {
               {t.header.login}
             </Button>
           )}
-          <Button href="#courses" variant="primary" onClick={close}>
+          <Button href="/courses" variant="primary" onClick={close}>
             {t.header.cta}
           </Button>
         </div>

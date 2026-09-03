@@ -14,5 +14,5 @@ export function TeacherView() {
   if (!loading && user?.role === "teacher") {
     return <TeacherDashboard />;
   }
-  return <InfoPlaceholder variant="teacher" backHref="/#teachers" />;
+  return <InfoPlaceholder variant="teacher" backHref="/for-teachers" />;
 }

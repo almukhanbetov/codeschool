@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Icon } from "@/lib/icons";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Button } from "@/components/ui/Button";
+import { Breadcrumbs } from "@/components/public/Breadcrumbs";
 import { getCourseTag, getLevelKey } from "@/lib/courseVisuals";
 import { ApiError, enrollCourse, getCourseProgress } from "@/lib/api";
 import type { Course, ModuleWithLessons } from "@/types";
@@ -67,6 +68,12 @@ export function CourseDetail({ course, modules }: CourseDetailProps) {
   return (
     <section className="section">
       <div className="container">
+        <Breadcrumbs
+          items={[
+            { label: t.site.nav.courses, href: "/courses" },
+            { label: course.title },
+          ]}
+        />
         <SectionHeading
           eyebrow={tag.label}
           title={course.title}

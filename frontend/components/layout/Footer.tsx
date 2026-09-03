@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Icon } from "@/lib/icons";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
@@ -12,12 +13,12 @@ export function Footer() {
     <footer className="site-footer">
       <div className="container footer-inner">
         <div className="footer-col footer-brand">
-          <a href="#hero" className="logo" aria-label="CODESCHOOL — home">
+          <Link href="/" className="logo" aria-label="CODESCHOOL — home">
             <span className="logo-mark" aria-hidden="true">
               <Icon name="code-xml" />
             </span>
             <span className="logo-text">CODESCHOOL</span>
-          </a>
+          </Link>
           <p>{t.footer.tagline}</p>
           <div className="footer-socials">
             <a href="#" aria-label="Instagram">
@@ -37,23 +38,28 @@ export function Footer() {
 
         <div className="footer-col">
           <h4>{t.footer.platform}</h4>
-          <a href="#courses">{t.nav.courses}</a>
-          <a href="#directions">{t.footer.programming}</a>
-          <a href="#directions">{t.footer.robotics}</a>
-          <a href="#directions">{t.footer.ai}</a>
+          <Link href="/courses">{t.site.nav.courses}</Link>
+          <Link href="/programming">{t.footer.programming}</Link>
+          <Link href="/robotics">{t.footer.robotics}</Link>
+          <Link href="/ai">{t.footer.ai}</Link>
+          <Link href="/certificates">{t.site.nav.certificates}</Link>
         </div>
 
         <div className="footer-col">
           <h4>{t.footer.people}</h4>
-          <a href="/teacher-academy">{t.footer.teacherAcademy}</a>
-          <a href="#parents">{t.nav.parents}</a>
-          <a href="#about">{t.footer.about}</a>
-          <a href="#">{t.footer.contacts}</a>
+          <Link href="/for-students">{t.site.nav.forStudents}</Link>
+          <Link href="/for-parents">{t.site.nav.forParents}</Link>
+          <Link href="/for-teachers">{t.site.nav.forTeachers}</Link>
+          <Link href="/teacher-academy">{t.footer.teacherAcademy}</Link>
         </div>
 
         <div className="footer-col">
-          <h4>{t.footer.language}</h4>
-          <LanguageSwitcher variant="footer" ariaLabel={t.footer.language} />
+          <h4>{t.footer.about}</h4>
+          <Link href="/how-it-works">{t.site.nav.howItWorks}</Link>
+          <Link href="/about">{t.footer.about}</Link>
+          <div className="footer-lang">
+            <LanguageSwitcher variant="footer" ariaLabel={t.footer.language} />
+          </div>
         </div>
       </div>
 

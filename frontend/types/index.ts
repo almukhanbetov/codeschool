@@ -755,6 +755,49 @@ export interface CertificatesTranslations {
   adminBack: string;
 }
 
+export interface SitePageHero {
+  eyebrow: string;
+  title: string;
+  lead: string;
+}
+
+export interface SiteTranslations {
+  back: string;
+  home: string;
+  notFoundTitle: string;
+  notFoundLead: string;
+  viewAllCourses: string;
+  coursesInDirection: string;
+  noCoursesInDirection: string;
+  directionTech: string;
+  nav: {
+    courses: string;
+    programming: string;
+    robotics: string;
+    ai: string;
+    forStudents: string;
+    forParents: string;
+    forTeachers: string;
+    academy: string;
+    howItWorks: string;
+    about: string;
+    certificates: string;
+  };
+  programming: SitePageHero;
+  robotics: SitePageHero;
+  ai: SitePageHero;
+  forStudents: SitePageHero;
+  forParents: SitePageHero;
+  forTeachers: SitePageHero;
+  howItWorks: SitePageHero;
+  about: SitePageHero;
+  certificates: SitePageHero & {
+    verifyTitle: string;
+    verifyPlaceholder: string;
+    verifyButton: string;
+  };
+}
+
 export interface Translations {
   meta: { title: string };
   nav: NavTranslations;
@@ -768,6 +811,7 @@ export interface Translations {
   admin: AdminTranslations;
   academy: AcademyTranslations;
   certificates: CertificatesTranslations;
+  site: SiteTranslations;
   hero: HeroTranslations;
   path: PathTranslations;
   directions: DirectionsTranslations;
@@ -851,7 +895,9 @@ export interface ChildrenExample {
 
 export interface NavItem {
   href: string;
-  key: keyof NavTranslations;
+  key: keyof SiteTranslations["nav"];
+  /** Shown in the desktop header bar (all items always appear in the mobile menu). */
+  primary?: boolean;
 }
 
 export interface StatItem {
