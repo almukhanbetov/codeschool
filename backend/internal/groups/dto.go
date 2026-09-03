@@ -152,6 +152,7 @@ type SubmissionDetail struct {
 		AssignmentType string  `json:"assignmentType"`
 		StarterCode    *string `json:"starterCode"`
 		ExpectedOutput *string `json:"expectedOutput"`
+		Language       *string `json:"language"`
 		Points         int     `json:"points"`
 	} `json:"assignment"`
 }

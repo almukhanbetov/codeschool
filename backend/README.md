@@ -2,7 +2,9 @@
 
 Go + Gin + pgx/v5 (`pgxpool`) REST API over PostgreSQL 17. No ORM — plain, parameterized SQL. Modular monolith: one binary, one domain package per resource (`programs`, `levels`, `courses`, `modules`, `lessons`, `users`, `auth`, `enrollments`, `assignments`, `progress`, `submissions`, `groups`, `parents`, `admin`, `quizzes`).
 
-On top of the catalog + auth + student + teacher + parent + admin flows, this stage adds the **quiz engine** (`internal/quizzes`): admin authoring of quiz settings / questions / options, student attempts with server-side automatic scoring (pass / fail against a configurable threshold), attempt history, and read-only teacher / parent views. Quiz assignments never touch the `submissions` table — their state lives in `quiz_attempts` — and a lesson with a quiz can only be completed once the student passes it. The earlier **admin panel API** (`internal/admin`, all routes `role = admin`) covers full CRUD over users, parent-child links, the catalog, and groups, plus a read-only **audit log**. See the root README.
+On top of the catalog + auth + student + teacher + parent + admin + quiz flows, this stage adds `assignments.language` (migration `00022`) — a per-`code`-assignment Monaco editor mode (`python` / `javascript` / `go` / `plaintext`, or NULL). It is threaded through the student assignment payload, the teacher submission-detail payload, and the admin assignment CRUD (validated against the allowed set). No new package — this stage is almost entirely frontend (see `frontend/README.md`); **code is still stored, never executed**.
+
+The **quiz engine** (`internal/quizzes`) covers admin authoring of quiz settings / questions / options, student attempts with server-side automatic scoring, attempt history, and read-only teacher / parent views; quiz assignments never touch `submissions`, and a lesson with a quiz can only be completed once the student passes it. The **admin panel API** (`internal/admin`, all routes `role = admin`) covers full CRUD over users, parent-child links, the catalog, and groups, plus a read-only **audit log**. See the root README.
 
 ## Architecture
 
@@ -59,7 +61,7 @@ Student-flow tables (`00008`–`00011`), all FK'd `ON DELETE CASCADE` to `users`
 | Table | Key rules |
 | --- | --- |
 | `enrollments` (`00008`) | `status ∈ (active, completed, cancelled)`; **partial unique index** on `(student_id, course_id) WHERE status = 'active'` — at most one active enrollment per course |
-| `assignments` (`00009`) | `assignment_type ∈ (text, code, quiz, project)`; `points >= 0`; `is_published` |
+| `assignments` (`00009`, `00022`) | `assignment_type ∈ (text, code, quiz, project)`; `points >= 0`; `is_published`; `language` (`00022`) NULL or `∈ (python, javascript, go, plaintext)` — the Monaco editor mode for a `code` assignment |
 | `lesson_progress` (`00010`) | `status ∈ (not_started, in_progress, completed)`; `progress_percent` 0–100; `UNIQUE (student_id, lesson_id)` |
 | `submissions` (`00011`) | `status ∈ (draft, submitted, checking, passed, failed)`; `score` 0–100 or NULL; `UNIQUE (student_id, assignment_id)` — one current submission, no attempt history yet |
 
@@ -170,7 +172,7 @@ Base path: `/api/v1`. Every success response is `{"data": ...}`; every error is 
 | GET | `/api/v1/me/courses` | the caller's enrollments + a trimmed course payload |
 | GET | `/api/v1/me/progress` | one `{courseId,title,completedLessons,totalLessons,progressPercent}` per enrolled course |
 | GET | `/api/v1/me/courses/:id/progress` | course tally + per-published-lesson status; `403` if not enrolled |
-| GET | `/api/v1/lessons/:id/assignments` | a lesson's published assignments — `403` unless enrolled in the owning course |
+| GET | `/api/v1/lessons/:id/assignments` | a lesson's published assignments (incl. `language` for `code` assignments) — `403` unless enrolled in the owning course |
 | POST | `/api/v1/lessons/:id/start` | idempotent → `lesson_progress` set `in_progress` |
 | POST | `/api/v1/lessons/:id/complete` | `409` if the lesson has a published assignment with no non-draft submission; otherwise sets `completed`/100%, recounts the course and auto-completes the enrollment (one transaction) |
 | PUT | `/api/v1/assignments/:id/submission` | create/replace the caller's submission content — allowed while `draft` **or** `failed`; `409` when `submitted`/`checking`/`passed` |
@@ -302,7 +304,7 @@ TEST_DATABASE_URL=postgres://codeschool:codeschool@localhost:5432/codeschool?ssl
 - `progress` — the lesson-completion transaction (recount + enrollment auto-complete + `lesson_progress` uniqueness).
 - `groups` — `AddStudentTx` (creates the enrollment, enforces `max_students`, blocks duplicates, rejects non-students) and the ownership joins (teacher A ≠ teacher B for groups, students, and submissions).
 - `parents` — `IsLinked` gate (parent A ≠ parent B), the `ListChildren` roll-up aggregates, `ChildCourseDetail` surfacing the teacher's `score`/`feedback`, `ErrCourseNotFound` for an un-enrolled course, and the newest-first activity timeline.
-- `admin` — the full program → assignment CRUD chain, duplicate-slug / bad-FK / bad-enum rejection, role-checked parent links + group teacher assignment, group membership (+ auto-enrollment, `max_students`), the self / last-admin guards, audit rows written, and `ON DELETE CASCADE` on a program drop.
+- `admin` — the full program → assignment CRUD chain, duplicate-slug / bad-FK / bad-enum rejection, the assignment `language` round-trip + invalid-language rejection, role-checked parent links + group teacher assignment, group membership (+ auto-enrollment, `max_students`), the self / last-admin guards, audit rows written, and `ON DELETE CASCADE` on a program drop.
 - `quizzes` — authoring (question on a non-quiz rejected, bad `pass_percent`, second correct option on `single_choice` rejected, audit rows), the attempt flow (non-enrolled / non-quiz blocked, resume returns the same attempt, foreign question/option rejected, `single_choice` needs exactly one selection, another student's attempt / double-submit rejected), fail-then-pass scoring across two attempts, the progress `CountPassedAssignments` gate, and question-with-history deactivating instead of deleting.
 
 ## Logging & shutdown
@@ -313,4 +315,6 @@ Startup logs `database connected` and `server listening on :PORT` — never secr
 
 Code execution / sandboxing (Monaco, code runner), AI review, certificates, payments, notifications, analytics — see the root README. Student code is **stored only**, never executed. Written submissions keep **one current row** per (student, assignment); quizzes keep a full attempt history in `quiz_attempts`. If a lesson was completed and the teacher later marks its assignment `failed`, the lesson progress is **not** rolled back — a stricter mastery workflow is future work. The parent flow is read-only. The admin panel has no bulk import, no soft-delete / undo for catalog/user rows, and no per-field audit diff.
 
-**Quiz limitations.** No code-quiz or free-text auto-grading, no question snapshots (editing a question's text changes how old attempts render — an accepted limitation), no shuffle of questions/options, no partial credit, no timed quizzes, no question bank, no random quiz generation. Referenced questions/options are never hard-deleted (they deactivate) but their text is still mutable. Refresh-token cleanup and login rate limiting remain noted as future hardening.
+**Quiz limitations.** No code-quiz or free-text auto-grading, no question snapshots (editing a question's text changes how old attempts render — an accepted limitation), no shuffle of questions/options, no partial credit, no timed quizzes, no question bank, no random quiz generation. Referenced questions/options are never hard-deleted (they deactivate) but their text is still mutable.
+
+**Code editor.** `assignments.language` (migration `00022`) drives the Monaco editor mode on the frontend for `code` assignments — `python` / `javascript` / `go` / `plaintext` (or NULL). This stage is **editor only**: student code is stored, never executed; there is no runner, no sandbox. Refresh-token cleanup and login rate limiting remain noted as future hardening.

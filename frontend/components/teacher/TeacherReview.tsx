@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { SubmissionBadge } from "@/components/ui/SubmissionBadge";
 import { Button } from "@/components/ui/Button";
+import { CodeEditor } from "@/components/learn/CodeEditor";
 import type { TeacherSubmissionDetail } from "@/types";
 
 type State =
@@ -155,9 +156,17 @@ export function TeacherReview({ submissionId }: { submissionId: number }) {
 
           <div className="review-col">
             <h3>{isCode ? t.teach.studentCode : t.teach.studentAnswer}</h3>
-            <pre className={isCode ? "learn-content-body review-code" : "learn-content-body"}>
-              {(isCode ? sub.code : sub.answer) || "—"}
-            </pre>
+            {isCode ? (
+              <CodeEditor
+                value={sub.code ?? ""}
+                onChange={() => {}}
+                language={a.language ?? "plaintext"}
+                readOnly
+                ariaLabel={t.teach.studentCode}
+              />
+            ) : (
+              <pre className="learn-content-body">{sub.answer || "—"}</pre>
+            )}
           </div>
         </div>
 

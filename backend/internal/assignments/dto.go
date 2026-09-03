@@ -11,6 +11,7 @@ type Response struct {
 	AssignmentType string  `json:"assignmentType"`
 	StarterCode    *string `json:"starterCode"`
 	ExpectedOutput *string `json:"expectedOutput"`
+	Language       *string `json:"language"`
 	Points         int     `json:"points"`
 	Position       int     `json:"position"`
 }
@@ -24,6 +25,7 @@ func toResponse(a Assignment) Response {
 		AssignmentType: a.AssignmentType,
 		StarterCode:    a.StarterCode,
 		ExpectedOutput: a.ExpectedOutput,
+		Language:       a.Language,
 		Points:         a.Points,
 		Position:       a.Position,
 	}

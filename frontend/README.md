@@ -150,6 +150,16 @@ One necessary substitution: `lucide-react` no longer ships branded logo icons (I
 - **Teacher** `TeacherStudentDetail` gains a read-only **Quiz results** table; **Parent** `ParentChildCourse` shows the same roll-up for quiz assignments.
 - New strings: `data/translations.ts` → `quiz` (learner-facing) and additions to `admin` / `teach`, RU + KZ + EN. Only a `.quiz-*` block was appended to `globals.css`. Dark/Light and the design system are untouched.
 
+## Code editor (Monaco)
+
+- **`@monaco-editor/react`** (added this stage) — `components/learn/CodeEditor.tsx` wraps it: a controlled `value`/`onChange` string editor with `language` (`python` / `javascript` / `go` / `plaintext`, from `assignments.language`), `readOnly`, and theme synced to `useTheme()` (`vs-dark` / `light`). Monaco itself is loaded from a CDN by `@monaco-editor/loader` at runtime.
+- **Two graceful degradations** (spec: mobile fallback, no execution): on a coarse pointer / viewport `< 720px`, or if `loader.init()` rejects (offline, CDN blocked), it renders the existing `.assignment-code` `<textarea>` instead — same value, same submit flow.
+- **`components/learn/AssignmentPanel.tsx`** — a `code` assignment now uses `CodeEditor` instead of the textarea, plus a **Reset to starter** link (visible only while editable, when the assignment has `starterCode`). `text` / `project` keep the plain textarea. Read-only kicks in exactly as before (`submitted` / `checking` / `passed`), editable again on `failed`.
+- **`components/teacher/TeacherReview.tsx`** — the student's code is shown in a read-only `CodeEditor` with the assignment's language; the student's text answer stays a `<pre>`.
+- **`components/admin/AdminCatalog.tsx`** — the assignment form/table gain a `language` select + column (empty = cleared to NULL).
+- New strings under `learn` (`resetToStarter`, `editorLoading`, `editorMobileNote`, `editorLanguage`, `editorReadOnly`) and `admin.fLanguage`, RU + KZ + EN. Only a `.code-editor-*` block was appended to `globals.css`.
+- No code execution: there is no "Run" button, no output pane. **`next.config.ts` is unchanged** — `@monaco-editor/react` is a normal client dependency and works with `output: "standalone"`.
+
 ## Placeholder routes
 
 `/courses` uses the same `.placeholder-*` visual language as the rest of the site.

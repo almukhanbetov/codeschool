@@ -619,12 +619,12 @@ func (r *Repository) DeleteLesson(ctx context.Context, id int64) error {
    =================================================================== */
 
 const assignmentCols = `id, lesson_id, title, description, assignment_type, starter_code,
-	expected_output, points, position, is_published, created_at, updated_at`
+	expected_output, language, points, position, is_published, created_at, updated_at`
 
 func scanAssignment(row rowScanner) (AssignmentRow, error) {
 	var a AssignmentRow
 	err := row.Scan(&a.ID, &a.LessonID, &a.Title, &a.Description, &a.AssignmentType, &a.StarterCode,
-		&a.ExpectedOutput, &a.Points, &a.Position, &a.IsPublished, &a.CreatedAt, &a.UpdatedAt)
+		&a.ExpectedOutput, &a.Language, &a.Points, &a.Position, &a.IsPublished, &a.CreatedAt, &a.UpdatedAt)
 	return a, err
 }
 
@@ -659,10 +659,10 @@ func (r *Repository) GetAssignment(ctx context.Context, id int64) (AssignmentRow
 
 func (r *Repository) CreateAssignment(ctx context.Context, req CreateAssignmentRequest) (AssignmentRow, error) {
 	a, err := scanAssignment(r.pool.QueryRow(ctx, `
-		INSERT INTO assignments (lesson_id, title, description, assignment_type, starter_code, expected_output, points, position, is_published)
-		VALUES ($1,$2,$3,$4,$5,$6, COALESCE($7,0), COALESCE($8,0), COALESCE($9, TRUE))
+		INSERT INTO assignments (lesson_id, title, description, assignment_type, starter_code, expected_output, points, position, is_published, language)
+		VALUES ($1,$2,$3,$4,$5,$6, COALESCE($7,0), COALESCE($8,0), COALESCE($9, TRUE), $10)
 		RETURNING `+assignmentCols,
-		req.LessonID, req.Title, req.Description, req.AssignmentType, req.StarterCode, req.ExpectedOutput, req.Points, req.Position, req.IsPublished))
+		req.LessonID, req.Title, req.Description, req.AssignmentType, req.StarterCode, req.ExpectedOutput, req.Points, req.Position, req.IsPublished, req.Language))
 	return a, classify(err)
 }
 

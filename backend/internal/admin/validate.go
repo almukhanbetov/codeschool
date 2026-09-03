@@ -13,6 +13,7 @@ func itoa(v int64) string     { return strconv.FormatInt(v, 10) }
 
 var groupStatuses = map[string]bool{"draft": true, "active": true, "completed": true, "cancelled": true}
 var assignmentTypes = map[string]bool{"text": true, "code": true, "quiz": true, "project": true}
+var assignmentLanguages = map[string]bool{"python": true, "javascript": true, "go": true, "plaintext": true}
 var lessonTypes = map[string]bool{"text": true, "video": true, "code": true, "quiz": true, "project": true}
 var courseDifficulty = map[string]bool{"beginner": true, "intermediate": true, "advanced": true}
 var userRoles = map[string]bool{"student": true, "teacher": true, "parent": true, "admin": true}
@@ -170,6 +171,7 @@ func (req UpdateAssignmentRequest) fields() map[string]any {
 	putStr(m, "assignment_type", req.AssignmentType)
 	putNullableStr(m, "starter_code", req.StarterCode)
 	putNullableStr(m, "expected_output", req.ExpectedOutput)
+	putNullableStr(m, "language", req.Language)
 	putInt(m, "points", req.Points)
 	putInt(m, "position", req.Position)
 	putBool(m, "is_published", req.IsPublished)

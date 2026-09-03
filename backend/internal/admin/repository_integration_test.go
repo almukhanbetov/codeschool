@@ -88,12 +88,18 @@ func TestAdmin_FullFlow(t *testing.T) {
 	if _, err := svc.CreateLesson(ctx, adminID, CreateLessonRequest{ModuleID: mod.ID, Title: "x", LessonType: strptr("bogus")}); err == nil {
 		t.Fatal("bad lessonType should be rejected")
 	}
-	asg, err := svc.CreateAssignment(ctx, adminID, CreateAssignmentRequest{LessonID: les.ID, Title: "Task", AssignmentType: "code"})
+	asg, err := svc.CreateAssignment(ctx, adminID, CreateAssignmentRequest{LessonID: les.ID, Title: "Task", AssignmentType: "code", Language: strptr("python")})
 	if err != nil {
 		t.Fatalf("create assignment: %v", err)
 	}
+	if asg.Language == nil || *asg.Language != "python" {
+		t.Fatalf("assignment language not stored: %+v", asg.Language)
+	}
 	if _, err := svc.CreateAssignment(ctx, adminID, CreateAssignmentRequest{LessonID: les.ID, Title: "x", AssignmentType: "nope"}); err == nil {
 		t.Fatal("bad assignmentType should be rejected")
+	}
+	if _, err := svc.UpdateAssignment(ctx, adminID, asg.ID, UpdateAssignmentRequest{Language: strptr("rust")}); err == nil {
+		t.Fatal("bad language should be rejected")
 	}
 	_ = asg
 

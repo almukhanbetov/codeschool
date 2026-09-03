@@ -421,6 +421,10 @@ func (s *Service) CreateAssignment(ctx context.Context, adminID int64, req Creat
 	if !assignmentTypes[req.AssignmentType] {
 		return AssignmentRow{}, invalid("invalid assignmentType")
 	}
+	if l := normStr(req.Language); l != nil && !assignmentLanguages[*l] {
+		return AssignmentRow{}, invalid("invalid language")
+	}
+	req.Language = normStr(req.Language)
 	if req.Points != nil && *req.Points < 0 {
 		return AssignmentRow{}, invalid("points must be >= 0")
 	}
@@ -438,6 +442,11 @@ func (s *Service) UpdateAssignment(ctx context.Context, adminID, id int64, req U
 	}
 	if req.AssignmentType != nil && !assignmentTypes[trimReq(*req.AssignmentType)] {
 		return AssignmentRow{}, invalid("invalid assignmentType")
+	}
+	if req.Language != nil {
+		if l := normStr(req.Language); l != nil && !assignmentLanguages[*l] {
+			return AssignmentRow{}, invalid("invalid language")
+		}
 	}
 	if req.Points != nil && *req.Points < 0 {
 		return AssignmentRow{}, invalid("points must be >= 0")

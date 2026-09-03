@@ -19,6 +19,7 @@ type Assignment struct {
 	AssignmentType string
 	StarterCode    *string
 	ExpectedOutput *string
+	Language       *string
 	Points         int
 	Position       int
 	IsPublished    bool

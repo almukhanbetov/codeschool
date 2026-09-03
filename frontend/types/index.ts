@@ -329,6 +329,11 @@ export interface LearnTranslations {
   projectPlaceholder: string;
   expectedOutput: string;
   starterCode: string;
+  resetToStarter: string;
+  editorLoading: string;
+  editorMobileNote: string;
+  editorLanguage: string;
+  editorReadOnly: string;
   loading: string;
   loadError: string;
   notEnrolled: string;
@@ -497,6 +502,7 @@ export interface AdminTranslations {
   fContent: string;
   fVideoUrl: string;
   fAssignmentType: string;
+  fLanguage: string;
   fPoints: string;
   fStarterCode: string;
   fExpectedOutput: string;
@@ -908,6 +914,9 @@ export interface CompleteLessonResult {
 
 export type AssignmentType = "text" | "code" | "quiz" | "project";
 
+/** Monaco language mode for a code assignment (backend `assignments.language`). */
+export type CodeLanguage = "python" | "javascript" | "go" | "plaintext";
+
 export interface Assignment {
   id: number;
   lessonId: number;
@@ -916,6 +925,7 @@ export interface Assignment {
   assignmentType: AssignmentType;
   starterCode: string | null;
   expectedOutput: string | null;
+  language: CodeLanguage | null;
   points: number;
   position: number;
 }
@@ -1058,6 +1068,7 @@ export interface TeacherSubmissionDetail {
     assignmentType: AssignmentType;
     starterCode: string | null;
     expectedOutput: string | null;
+    language: CodeLanguage | null;
     points: number;
   };
 }
@@ -1280,6 +1291,7 @@ export interface AdminAssignment {
   assignmentType: AssignmentType;
   starterCode: string | null;
   expectedOutput: string | null;
+  language: CodeLanguage | null;
   points: number;
   position: number;
   isPublished: boolean;

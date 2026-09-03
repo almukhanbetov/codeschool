@@ -19,7 +19,7 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 
 const columns = `
 	id, lesson_id, title, description, assignment_type, starter_code,
-	expected_output, points, position, is_published, created_at, updated_at
+	expected_output, language, points, position, is_published, created_at, updated_at
 `
 
 // ListPublishedByLesson returns the published assignments for a lesson,
@@ -81,7 +81,7 @@ func (r *Repository) GetPublishedByID(ctx context.Context, id int64) (Assignment
 	row := r.pool.QueryRow(ctx, `
 		SELECT
 			a.id, a.lesson_id, a.title, a.description, a.assignment_type, a.starter_code,
-			a.expected_output, a.points, a.position, a.is_published, a.created_at, a.updated_at,
+			a.expected_output, a.language, a.points, a.position, a.is_published, a.created_at, a.updated_at,
 			m.course_id
 		FROM assignments a
 		JOIN lessons l ON l.id = a.lesson_id
@@ -93,7 +93,7 @@ func (r *Repository) GetPublishedByID(ctx context.Context, id int64) (Assignment
 	var courseID int64
 	err := row.Scan(
 		&a.ID, &a.LessonID, &a.Title, &a.Description, &a.AssignmentType, &a.StarterCode,
-		&a.ExpectedOutput, &a.Points, &a.Position, &a.IsPublished, &a.CreatedAt, &a.UpdatedAt,
+		&a.ExpectedOutput, &a.Language, &a.Points, &a.Position, &a.IsPublished, &a.CreatedAt, &a.UpdatedAt,
 		&courseID,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -113,7 +113,7 @@ func scanAssignment(row rowScanner) (Assignment, error) {
 	var a Assignment
 	err := row.Scan(
 		&a.ID, &a.LessonID, &a.Title, &a.Description, &a.AssignmentType, &a.StarterCode,
-		&a.ExpectedOutput, &a.Points, &a.Position, &a.IsPublished, &a.CreatedAt, &a.UpdatedAt,
+		&a.ExpectedOutput, &a.Language, &a.Points, &a.Position, &a.IsPublished, &a.CreatedAt, &a.UpdatedAt,
 	)
 	return a, err
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/Button";
+import { CodeEditor } from "@/components/learn/CodeEditor";
 import { SubmissionBadge } from "@/components/ui/SubmissionBadge";
 import {
   ApiError,
@@ -250,19 +251,41 @@ function WrittenAssignmentPanel({
         </div>
       )}
 
-      <label className="assignment-label" htmlFor={`a-${assignment.id}`}>
-        {usesCodeField ? t.learn.yourCode : t.learn.yourAnswer}
-      </label>
-      <textarea
-        id={`a-${assignment.id}`}
-        className={usesCodeField ? "assignment-input assignment-code" : "assignment-input"}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        disabled={!editable || pending !== null}
-        rows={usesCodeField ? 8 : 5}
-        spellCheck={!usesCodeField}
-        placeholder={isProject ? t.learn.projectPlaceholder : undefined}
-      />
+      <div className="assignment-label-row">
+        <label className="assignment-label" htmlFor={`a-${assignment.id}`}>
+          {usesCodeField ? t.learn.yourCode : t.learn.yourAnswer}
+        </label>
+        {isCode && editable && assignment.starterCode != null && (
+          <button
+            type="button"
+            className="admin-link"
+            onClick={() => setValue(assignment.starterCode ?? "")}
+            disabled={pending !== null}
+          >
+            {t.learn.resetToStarter}
+          </button>
+        )}
+      </div>
+      {isCode ? (
+        <CodeEditor
+          value={value}
+          onChange={setValue}
+          language={assignment.language ?? "plaintext"}
+          readOnly={!editable || pending !== null}
+          ariaLabel={t.learn.yourCode}
+        />
+      ) : (
+        <textarea
+          id={`a-${assignment.id}`}
+          className="assignment-input"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          disabled={!editable || pending !== null}
+          rows={5}
+          spellCheck
+          placeholder={isProject ? t.learn.projectPlaceholder : undefined}
+        />
+      )}
 
       {error && (
         <p className="auth-error" role="alert">

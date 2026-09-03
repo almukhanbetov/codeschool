@@ -427,7 +427,7 @@ func (r *Repository) GetSubmissionForTeacher(ctx context.Context, teacherID, sub
 			co.id, co.title, co.slug,
 			m.id, m.title,
 			l.id, l.title,
-			a.id, a.title, a.description, a.assignment_type, a.starter_code, a.expected_output, a.points
+			a.id, a.title, a.description, a.assignment_type, a.starter_code, a.expected_output, a.language, a.points
 		FROM submissions s
 		JOIN users stu ON stu.id = s.student_id
 		JOIN assignments a ON a.id = s.assignment_id
@@ -447,7 +447,7 @@ func (r *Repository) GetSubmissionForTeacher(ctx context.Context, teacherID, sub
 		&d.Module.ID, &d.Module.Title,
 		&d.Lesson.ID, &d.Lesson.Title,
 		&d.Assignment.ID, &d.Assignment.Title, &d.Assignment.Description, &d.Assignment.AssignmentType,
-		&d.Assignment.StarterCode, &d.Assignment.ExpectedOutput, &d.Assignment.Points,
+		&d.Assignment.StarterCode, &d.Assignment.ExpectedOutput, &d.Assignment.Language, &d.Assignment.Points,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return SubmissionDetail{}, ErrSubmissionNotFound

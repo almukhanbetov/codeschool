@@ -280,6 +280,7 @@ export function AdminCatalog() {
             title: r.title,
             description: r.description,
             assignmentType: r.assignmentType,
+            language: r.language ?? "",
             starterCode: r.starterCode,
             expectedOutput: r.expectedOutput,
             points: r.points,
@@ -296,6 +297,12 @@ export function AdminCatalog() {
               required: true,
               options: ["text", "code", "quiz", "project"].map((v) => ({ value: v, label: v })),
             },
+            {
+              key: "language",
+              label: a.fLanguage,
+              type: "select",
+              options: ["python", "javascript", "go", "plaintext"].map((v) => ({ value: v, label: v })),
+            },
             { key: "starterCode", label: a.fStarterCode, type: "textarea" },
             { key: "expectedOutput", label: a.fExpectedOutput, type: "textarea" },
             numberField("points", a.fPoints),
@@ -306,6 +313,7 @@ export function AdminCatalog() {
             { label: "ID", render: (r) => r.id },
             titleCol<AdminAssignment>(),
             { label: a.fAssignmentType, render: (r) => r.assignmentType },
+            { label: a.fLanguage, render: (r) => r.language ?? <span className="admin-muted">—</span> },
             { label: a.fPoints, render: (r) => r.points },
             boolCol((r) => (r as AdminAssignment).isPublished) as ColumnDef<AdminAssignment>,
           ]}

@@ -183,7 +183,7 @@ WHERE lesson_id IN (
     WHERE m.course_id = (SELECT id FROM courses WHERE slug = 'python-start')
 );
 
-INSERT INTO assignments (lesson_id, title, description, assignment_type, starter_code, expected_output, points, position, is_published)
+INSERT INTO assignments (lesson_id, title, description, assignment_type, starter_code, expected_output, language, points, position, is_published)
 VALUES
     (
         (SELECT id FROM lessons WHERE slug = 'pervaya-komanda-print'),
@@ -192,6 +192,7 @@ VALUES
         'code',
         'print("...")',
         'Hello, Kazakhstan!',
+        'python',
         10, 1, TRUE
     ),
     (
@@ -201,6 +202,7 @@ VALUES
         'code',
         'name = "..."' || E'\n' || 'print(name)',
         NULL,
+        'python',
         10, 1, TRUE
     ),
     (
@@ -210,6 +212,7 @@ VALUES
         'text',
         NULL,
         NULL,
+        NULL,
         10, 1, TRUE
     ),
     (
@@ -217,6 +220,7 @@ VALUES
         'Тест: Циклы Python',
         'Небольшой тест по циклам for и функции range().',
         'quiz',
+        NULL,
         NULL,
         NULL,
         0, 1, TRUE
