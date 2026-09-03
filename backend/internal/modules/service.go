@@ -16,6 +16,16 @@ func NewService(repo *Repository) *Service {
 }
 
 func (s *Service) ListByCourseID(ctx context.Context, courseID int64) ([]Response, error) {
+	teacherOnly, err := s.repo.CourseIsTeacherOnly(ctx, courseID)
+	if err != nil {
+		return nil, httpx.Internal("failed to load modules")
+	}
+	if teacherOnly {
+		// Teacher Academy content: do not confirm its existence to the
+		// public / student catalog — answer as if the course is unknown.
+		return nil, httpx.NotFound("COURSE_NOT_FOUND", "Course not found")
+	}
+
 	items, err := s.repo.ListByCourseID(ctx, courseID)
 	if err != nil {
 		return nil, httpx.Internal("failed to load modules")

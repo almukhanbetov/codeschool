@@ -73,6 +73,7 @@ func (r *Repository) ListChildren(ctx context.Context, parentID int64) ([]ChildL
 				SELECT DISTINCT course_id
 				FROM enrollments
 				WHERE student_id = u.id AND status IN ('active', 'completed')
+				  AND course_id IN (SELECT id FROM courses WHERE audience <> 'teacher')
 			) ec
 			CROSS JOIN LATERAL (
 				SELECT
@@ -130,7 +131,7 @@ func (r *Repository) ChildOverview(ctx context.Context, childID int64) (ChildOve
 			CASE WHEN bool_or(e.status = 'active') THEN 'active' ELSE 'completed' END AS enr_status,
 			cc.total, cc.completed
 		FROM enrollments e
-		JOIN courses c ON c.id = e.course_id
+		JOIN courses c ON c.id = e.course_id AND c.audience <> 'teacher'
 		CROSS JOIN LATERAL (
 			SELECT
 				count(*) FILTER (WHERE l.is_published)                             AS total,
@@ -180,7 +181,7 @@ func (r *Repository) ChildCourseDetail(ctx context.Context, childID, courseID in
 	err = r.pool.QueryRow(ctx, `
 		SELECT c.id, c.title, c.slug
 		FROM courses c
-		WHERE c.id = $2 AND EXISTS (
+		WHERE c.id = $2 AND c.audience <> 'teacher' AND EXISTS (
 			SELECT 1 FROM enrollments e
 			WHERE e.student_id = $1 AND e.course_id = c.id AND e.status IN ('active', 'completed')
 		)
@@ -289,7 +290,7 @@ func (r *Repository) Activity(ctx context.Context, childID int64) (ActivitySumma
 			FROM lesson_progress lp
 			JOIN lessons l ON l.id = lp.lesson_id
 			JOIN modules m ON m.id = l.module_id
-			JOIN courses c ON c.id = m.course_id
+			JOIN courses c ON c.id = m.course_id AND c.audience <> 'teacher'
 			WHERE lp.student_id = $1 AND lp.status = 'completed' AND lp.completed_at IS NOT NULL
 		)
 		UNION ALL
@@ -306,7 +307,7 @@ func (r *Repository) Activity(ctx context.Context, childID int64) (ActivitySumma
 			JOIN assignments a ON a.id = s.assignment_id
 			JOIN lessons l ON l.id = a.lesson_id
 			JOIN modules m ON m.id = l.module_id
-			JOIN courses c ON c.id = m.course_id
+			JOIN courses c ON c.id = m.course_id AND c.audience <> 'teacher'
 			WHERE s.student_id = $1 AND s.status <> 'draft'
 			  AND COALESCE(s.checked_at, s.submitted_at) IS NOT NULL
 		)

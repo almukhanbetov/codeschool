@@ -69,6 +69,43 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (Lesson, error) {
 	return l, nil
 }
 
+// ModuleCourseTeacherOnly reports whether the course that owns the given
+// module targets teachers exclusively (audience = 'teacher'). A missing
+// module reports false. Used to hide Teacher Academy content from the
+// public GET /modules/:id/lessons endpoint.
+func (r *Repository) ModuleCourseTeacherOnly(ctx context.Context, moduleID int64) (bool, error) {
+	var teacherOnly bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT COALESCE(bool_or(c.audience = 'teacher'), FALSE)
+		FROM modules m
+		JOIN courses c ON c.id = m.course_id
+		WHERE m.id = $1
+	`, moduleID).Scan(&teacherOnly)
+	if err != nil {
+		return false, fmt.Errorf("module course audience: %w", err)
+	}
+	return teacherOnly, nil
+}
+
+// LessonCourseTeacherOnly reports whether the course that owns the given
+// lesson (via its module) targets teachers exclusively. A missing lesson
+// reports false. Used to hide Teacher Academy content from the public
+// GET /lessons/:id endpoint.
+func (r *Repository) LessonCourseTeacherOnly(ctx context.Context, lessonID int64) (bool, error) {
+	var teacherOnly bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT COALESCE(bool_or(c.audience = 'teacher'), FALSE)
+		FROM lessons l
+		JOIN modules m ON m.id = l.module_id
+		JOIN courses c ON c.id = m.course_id
+		WHERE l.id = $1
+	`, lessonID).Scan(&teacherOnly)
+	if err != nil {
+		return false, fmt.Errorf("lesson course audience: %w", err)
+	}
+	return teacherOnly, nil
+}
+
 // CourseIDByLessonID resolves the owning course of a published lesson (via
 // its module). ErrNotFound if the lesson is missing or unpublished — used by
 // the student-flow packages to authorize by enrollment without importing the

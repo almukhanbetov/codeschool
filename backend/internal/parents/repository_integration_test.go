@@ -37,6 +37,12 @@ func TestRepository_ParentFlow(t *testing.T) {
 	levelID := q(`INSERT INTO levels (program_id, title) VALUES ($1,'L') RETURNING id`, programID)
 	courseID := q(`INSERT INTO courses (level_id, title, slug, is_published) VALUES ($1,'C','course-parents-it',TRUE) RETURNING id`, levelID)
 	otherCourseID := q(`INSERT INTO courses (level_id, title, slug, is_published) VALUES ($1,'C2','course-parents-it-2',TRUE) RETURNING id`, levelID)
+	// A Teacher Academy course the child must never be shown, even if a raw
+	// enrolment row exists (the enrolment service blocks it, but the parent
+	// read queries must exclude audience='teacher' defensively — spec §8).
+	teacherCourseID := q(`INSERT INTO courses (level_id, title, slug, audience, is_published) VALUES ($1,'TC','course-parents-it-teacher','teacher',TRUE) RETURNING id`, levelID)
+	tcModuleID := q(`INSERT INTO modules (course_id, title, position) VALUES ($1,'TM',1) RETURNING id`, teacherCourseID)
+	tcLessonID := q(`INSERT INTO lessons (module_id, title, position, is_published) VALUES ($1,'TL',1,TRUE) RETURNING id`, tcModuleID)
 	moduleID := q(`INSERT INTO modules (course_id, title, position) VALUES ($1,'M',1) RETURNING id`, courseID)
 	lesson1 := q(`INSERT INTO lessons (module_id, title, position, is_published) VALUES ($1,'L1',1,TRUE) RETURNING id`, moduleID)
 	lesson2 := q(`INSERT INTO lessons (module_id, title, position, is_published) VALUES ($1,'L2',2,TRUE) RETURNING id`, moduleID)
@@ -58,6 +64,9 @@ func TestRepository_ParentFlow(t *testing.T) {
 	mustExec(`INSERT INTO parent_children (parent_id, child_id) VALUES ($1,$2)`, p1, c1)
 	mustExec(`INSERT INTO enrollments (student_id, course_id, status) VALUES ($1,$2,'active')`, c1, courseID)
 	mustExec(`INSERT INTO lesson_progress (student_id, lesson_id, status, progress_percent, completed_at) VALUES ($1,$2,'completed',100,NOW())`, c1, lesson1)
+	// raw teacher-course enrolment + progress that must stay invisible to the parent
+	mustExec(`INSERT INTO enrollments (student_id, course_id, status) VALUES ($1,$2,'active')`, c1, teacherCourseID)
+	mustExec(`INSERT INTO lesson_progress (student_id, lesson_id, status, progress_percent, completed_at) VALUES ($1,$2,'completed',100,NOW())`, c1, tcLessonID)
 	// a failed, reviewed submission with feedback
 	mustExec(`INSERT INTO submissions (assignment_id, student_id, code, status, score, teacher_feedback, submitted_at, checked_at)
 	          VALUES ($1,$2,'print(1)','failed',3,'fix the output',NOW(),NOW())`, assignmentID, c1)
@@ -99,6 +108,11 @@ func TestRepository_ParentFlow(t *testing.T) {
 	if len(ov.Courses) != 1 || ov.Courses[0].Progress.ProgressPercent != 50 {
 		t.Fatalf("bad overview: %+v", ov)
 	}
+	for _, cp := range ov.Courses {
+		if cp.Course.ID == teacherCourseID {
+			t.Fatal("ChildOverview leaked a teacher-audience course to the parent")
+		}
+	}
 
 	// --- ChildCourseDetail carries the teacher feedback ---
 	d, err := repo.ChildCourseDetail(ctx, c1, courseID)
@@ -114,6 +128,11 @@ func TestRepository_ParentFlow(t *testing.T) {
 	}
 	if _, err := repo.ChildCourseDetail(ctx, c1, otherCourseID); !errors.Is(err, ErrCourseNotFound) {
 		t.Fatalf("course the child is not enrolled in: want ErrCourseNotFound, got %v", err)
+	}
+	// the Teacher Academy course must be invisible even though a raw
+	// enrolment row exists for the child.
+	if _, err := repo.ChildCourseDetail(ctx, c1, teacherCourseID); !errors.Is(err, ErrCourseNotFound) {
+		t.Fatalf("teacher-audience course must be hidden from the parent: got %v", err)
 	}
 
 	// --- Activity timeline (newest first): the review, then the lesson ---

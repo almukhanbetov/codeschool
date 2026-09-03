@@ -47,6 +47,23 @@ func (r *Repository) ListByCourseID(ctx context.Context, courseID int64) ([]Modu
 	return out, nil
 }
 
+// CourseIsTeacherOnly reports whether the given course targets teachers
+// exclusively (audience = 'teacher') and must therefore be hidden from the
+// public / student catalog. A missing course reports false so the caller
+// falls through to its normal not-found handling.
+func (r *Repository) CourseIsTeacherOnly(ctx context.Context, courseID int64) (bool, error) {
+	var teacherOnly bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT COALESCE(bool_or(audience = 'teacher'), FALSE)
+		FROM courses
+		WHERE id = $1
+	`, courseID).Scan(&teacherOnly)
+	if err != nil {
+		return false, fmt.Errorf("course audience: %w", err)
+	}
+	return teacherOnly, nil
+}
+
 func (r *Repository) GetByID(ctx context.Context, id int64) (Module, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT `+columns+`

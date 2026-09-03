@@ -25,6 +25,7 @@ type repository interface {
 	PublishedIDsByLesson(ctx context.Context, lessonID int64) ([]int64, error)
 	GetPublishedByID(ctx context.Context, id int64) (Assignment, int64, error)
 	GetByID(ctx context.Context, id int64) (Assignment, error)
+	CourseIsTeacherOnly(ctx context.Context, courseID int64) (bool, error)
 }
 
 type Service struct {
@@ -53,6 +54,17 @@ func (s *Service) ListForLesson(ctx context.Context, studentID, lessonID int64) 
 		return nil, err
 	}
 	if !enrolled {
+		// A student can never be enrolled in a Teacher Academy course, so
+		// hide it as "not found" instead of confirming it exists with a
+		// 403. Enrolled callers (incl. the /teacher-academy re-mount, where
+		// the teacher *is* enrolled) never reach this branch.
+		teacherOnly, err := s.repo.CourseIsTeacherOnly(ctx, courseID)
+		if err != nil {
+			return nil, err
+		}
+		if teacherOnly {
+			return nil, ErrLessonNotFound
+		}
 		return nil, ErrNotEnrolled
 	}
 

@@ -9,7 +9,12 @@ import (
 )
 
 type fakeRepo struct {
-	byLesson map[int64][]Assignment
+	byLesson       map[int64][]Assignment
+	teacherCourses map[int64]bool
+}
+
+func (f *fakeRepo) CourseIsTeacherOnly(_ context.Context, courseID int64) (bool, error) {
+	return f.teacherCourses[courseID], nil
 }
 
 func (f *fakeRepo) ListPublishedByLesson(_ context.Context, lessonID int64) ([]Assignment, error) {
@@ -79,6 +84,43 @@ func TestListForLesson_RequiresEnrollment(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].ID != 1 {
 		t.Fatalf("unexpected: %+v", got)
+	}
+}
+
+func TestListForLesson_TeacherOnlyCourseIsHidden(t *testing.T) {
+	repo := &fakeRepo{
+		byLesson: map[int64][]Assignment{
+			7: {{ID: 1, LessonID: 7, Title: "A", AssignmentType: TypeCode, IsPublished: true}},
+		},
+		teacherCourses: map[int64]bool{42: true},
+	}
+	ls := &fakeLessons{courseByLesson: map[int64]int64{7: 42}}
+	en := &fakeEnroll{enrolled: map[[2]int64]bool{}}
+	svc := NewService(repo, ls, en)
+
+	// A student who is not enrolled in a Teacher Academy course must get a
+	// 404-style "lesson not found", never a 403 that confirms it exists.
+	if _, err := svc.ListForLesson(context.Background(), 5, 7); !errors.Is(err, ErrLessonNotFound) {
+		t.Fatalf("want ErrLessonNotFound for a teacher-only course, got %v", err)
+	}
+
+	// An enrolled caller (e.g. a teacher via the /teacher-academy re-mount)
+	// still gets the assignments.
+	en.enrolled[[2]int64{5, 42}] = true
+	got, err := svc.ListForLesson(context.Background(), 5, 7)
+	if err != nil || len(got) != 1 {
+		t.Fatalf("enrolled caller must see assignments: %+v %v", got, err)
+	}
+}
+
+func TestListForLesson_NonTeacherCourseStillReturns403(t *testing.T) {
+	repo := &fakeRepo{
+		byLesson:       map[int64][]Assignment{7: {{ID: 1, LessonID: 7, IsPublished: true}}},
+		teacherCourses: map[int64]bool{},
+	}
+	svc := NewService(repo, &fakeLessons{courseByLesson: map[int64]int64{7: 3}}, &fakeEnroll{enrolled: map[[2]int64]bool{}})
+	if _, err := svc.ListForLesson(context.Background(), 5, 7); !errors.Is(err, ErrNotEnrolled) {
+		t.Fatalf("want ErrNotEnrolled for a normal course, got %v", err)
 	}
 }
 

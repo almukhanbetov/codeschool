@@ -105,6 +105,23 @@ func (r *Repository) GetPublishedByID(ctx context.Context, id int64) (Assignment
 	return a, courseID, nil
 }
 
+// CourseIsTeacherOnly reports whether the given course targets teachers
+// exclusively (audience = 'teacher'). A missing course reports false. Used
+// to answer a non-enrolled student's assignment request with 404 rather
+// than 403 when the owning course is Teacher Academy content.
+func (r *Repository) CourseIsTeacherOnly(ctx context.Context, courseID int64) (bool, error) {
+	var teacherOnly bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT COALESCE(bool_or(audience = 'teacher'), FALSE)
+		FROM courses
+		WHERE id = $1
+	`, courseID).Scan(&teacherOnly)
+	if err != nil {
+		return false, fmt.Errorf("course audience: %w", err)
+	}
+	return teacherOnly, nil
+}
+
 // GetByID returns any assignment by id (published or not) — for admin/authoring
 // callers. ErrNotFound if it does not exist.
 func (r *Repository) GetByID(ctx context.Context, id int64) (Assignment, error) {

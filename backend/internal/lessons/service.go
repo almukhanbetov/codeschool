@@ -16,6 +16,15 @@ func NewService(repo *Repository) *Service {
 }
 
 func (s *Service) ListByModuleID(ctx context.Context, moduleID int64) ([]Response, error) {
+	teacherOnly, err := s.repo.ModuleCourseTeacherOnly(ctx, moduleID)
+	if err != nil {
+		return nil, httpx.Internal("failed to load lessons")
+	}
+	if teacherOnly {
+		// Teacher Academy content — hide it from the public catalog.
+		return nil, httpx.NotFound("MODULE_NOT_FOUND", "Module not found")
+	}
+
 	items, err := s.repo.ListByModuleID(ctx, moduleID)
 	if err != nil {
 		return nil, httpx.Internal("failed to load lessons")
@@ -41,6 +50,15 @@ func (s *Service) CourseIDForLesson(ctx context.Context, lessonID int64) (int64,
 }
 
 func (s *Service) GetByID(ctx context.Context, id int64) (Response, error) {
+	teacherOnly, err := s.repo.LessonCourseTeacherOnly(ctx, id)
+	if err != nil {
+		return Response{}, httpx.Internal("failed to load lesson")
+	}
+	if teacherOnly {
+		// Teacher Academy content — hide it from the public catalog.
+		return Response{}, httpx.NotFound("LESSON_NOT_FOUND", "Lesson not found")
+	}
+
 	l, err := s.repo.GetByID(ctx, id)
 	if errors.Is(err, ErrNotFound) {
 		return Response{}, httpx.NotFound("LESSON_NOT_FOUND", "Lesson not found")
