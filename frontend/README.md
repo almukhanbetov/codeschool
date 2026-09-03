@@ -133,8 +133,14 @@ One necessary substitution: `lucide-react` no longer ships branded logo icons (I
 - **`/parent/children/[id]`** (`ParentChildDetail`) — course cards (→ course detail) + a colour-coded recent-activity timeline (`ParentActivityItem`).
 - **`/parent/children/[id]/courses/[courseId]`** (`ParentChildCourse`) — lesson progress list + an assignment panel each, showing the submission badge and the teacher's feedback in a pass/fail-coloured `review-result` callout.
 - All `/parent/*` routes wrapped in `RequireAuth roles={["parent"]}`.
-- New CSS is appended to `globals.css` (existing tokens only). New strings live under `data/translations.ts` → `student` / `learn` / `teach` / `family`, RU + KZ + EN. API status values are never translated.
+
+## Admin panel
+
+- **`lib/api.ts`** — `adminApi`: `overview`, `audit`, `users` (+`setPassword`), `parentLinks`, `groups` + `groupStudents`, and `programs`/`levels`/`courses`/`modules`/`lessons`/`assignments` built from an `adminCrud<Row>` factory (`list` / `get` / `create` / `update` / `remove`).
+- **`components/admin/`** — `AdminShell` (section nav), `AdminOverview`, `AdminUsers`, `AdminCatalog` (breadcrumb hierarchy), `AdminGroups` (+ student-manager dialog), `AdminLinks`, `AdminAudit`, and the reusable **`EntityManager<Row>`** (field-def-driven table + inline create/edit form + delete-with-confirm; `select` fields can be `numeric` for id references, `createOnly` for passwords, `extraAction` for drill-down).
+- **`/admin`**, **`/admin/users`**, **`/admin/catalog`**, **`/admin/groups`**, **`/admin/links`**, **`/admin/audit`** — each `RequireAuth roles={["admin"]}` + `AdminShell`.
+- New strings live under `data/translations.ts` → `admin`, RU + KZ + EN. Only a `.admin-*` block was appended to `globals.css`; existing `.teacher-table` / `.btn` / form tokens are reused. No existing page or component was restyled.
 
 ## Placeholder routes
 
-`/courses` and `/admin` use the same `.placeholder-*` visual language as the rest of the site.
+`/courses` uses the same `.placeholder-*` visual language as the rest of the site.

@@ -434,6 +434,122 @@ export interface FamilyTranslations {
   activityAssignmentFailed: string;
 }
 
+export interface AdminTranslations {
+  title: string;
+  navOverview: string;
+  navUsers: string;
+  navCatalog: string;
+  navGroups: string;
+  navLinks: string;
+  navAudit: string;
+  backToPanel: string;
+  // overview
+  ovUsers: string;
+  ovActive: string;
+  ovPrograms: string;
+  ovCourses: string;
+  ovPublished: string;
+  ovGroups: string;
+  ovPending: string;
+  ovLinks: string;
+  // common
+  create: string;
+  edit: string;
+  save: string;
+  saving: string;
+  cancel: string;
+  delete: string;
+  confirmDelete: string;
+  add: string;
+  remove: string;
+  search: string;
+  all: string;
+  none: string;
+  loading: string;
+  loadError: string;
+  saved: string;
+  nothing: string;
+  actions: string;
+  yes: string;
+  no: string;
+  // fields
+  fTitle: string;
+  fSlug: string;
+  fDescription: string;
+  fPosition: string;
+  fAgeFrom: string;
+  fAgeTo: string;
+  fActive: string;
+  fPublished: string;
+  fFirstName: string;
+  fLastName: string;
+  fEmail: string;
+  fPhone: string;
+  fPassword: string;
+  fRole: string;
+  fLessonType: string;
+  fContent: string;
+  fVideoUrl: string;
+  fAssignmentType: string;
+  fPoints: string;
+  fStarterCode: string;
+  fExpectedOutput: string;
+  fShortDescription: string;
+  fImageUrl: string;
+  fDifficulty: string;
+  fDuration: string;
+  fProjects: string;
+  fCourse: string;
+  fTeacher: string;
+  fStatus: string;
+  fMaxStudents: string;
+  fStartDate: string;
+  fEndDate: string;
+  // users
+  usersTitle: string;
+  filterRole: string;
+  filterActive: string;
+  newUser: string;
+  resetPassword: string;
+  deactivate: string;
+  activate: string;
+  // catalog
+  programs: string;
+  levels: string;
+  courses: string;
+  modules: string;
+  lessons: string;
+  assignments: string;
+  newProgram: string;
+  newLevel: string;
+  newCourse: string;
+  newModule: string;
+  newLesson: string;
+  newAssignment: string;
+  openCurriculum: string;
+  // groups
+  groupsTitle: string;
+  newGroup: string;
+  manageStudents: string;
+  students: string;
+  addStudentById: string;
+  studentId: string;
+  // links
+  linksTitle: string;
+  newLink: string;
+  parent: string;
+  child: string;
+  parentId: string;
+  childId: string;
+  // audit
+  auditTitle: string;
+  auditWhen: string;
+  auditWho: string;
+  auditAction: string;
+  auditEntity: string;
+  auditSummary: string;
+}
+
 export interface Translations {
   meta: { title: string };
   nav: NavTranslations;
@@ -443,6 +559,7 @@ export interface Translations {
   learn: LearnTranslations;
   teach: TeachTranslations;
   family: FamilyTranslations;
+  admin: AdminTranslations;
   hero: HeroTranslations;
   path: PathTranslations;
   directions: DirectionsTranslations;
@@ -972,4 +1089,156 @@ export interface ParentActivityItem {
 export interface ParentActivitySummary {
   child: ChildBrief;
   items: ParentActivityItem[];
+}
+
+/* ---- Admin panel (backend/internal/admin) ---- */
+
+export interface AdminOverview {
+  users: Record<string, number>;
+  activeUsers: number;
+  programs: number;
+  courses: number;
+  publishedCourses: number;
+  groups: number;
+  pendingSubmissions: number;
+  parentLinks: number;
+}
+
+export interface AdminUser {
+  id: number;
+  email: string | null;
+  phone: string | null;
+  firstName: string;
+  lastName: string | null;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminParentLink {
+  parentId: number;
+  parentName: string;
+  childId: number;
+  childName: string;
+  linkedAt: string;
+}
+
+export interface AdminProgram {
+  id: number;
+  title: string;
+  slug: string;
+  description: string | null;
+  ageFrom: number | null;
+  ageTo: number | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminLevel {
+  id: number;
+  programId: number;
+  title: string;
+  description: string | null;
+  ageFrom: number | null;
+  ageTo: number | null;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminCourse {
+  id: number;
+  levelId: number;
+  title: string;
+  slug: string;
+  description: string | null;
+  shortDescription: string | null;
+  imageUrl: string | null;
+  ageFrom: number | null;
+  ageTo: number | null;
+  durationLessons: number | null;
+  projectsCount: number | null;
+  difficulty: string | null;
+  isPublished: boolean;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminModule {
+  id: number;
+  courseId: number;
+  title: string;
+  description: string | null;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminLesson {
+  id: number;
+  moduleId: number;
+  title: string;
+  slug: string | null;
+  description: string | null;
+  content: string | null;
+  videoUrl: string | null;
+  lessonType: string;
+  position: number;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminAssignment {
+  id: number;
+  lessonId: number;
+  title: string;
+  description: string | null;
+  assignmentType: AssignmentType;
+  starterCode: string | null;
+  expectedOutput: string | null;
+  points: number;
+  position: number;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminGroup {
+  id: number;
+  courseId: number;
+  courseTitle: string;
+  teacherId: number;
+  teacherName: string;
+  title: string;
+  description: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  maxStudents: number | null;
+  status: "draft" | "active" | "completed" | "cancelled";
+  studentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminGroupStudent {
+  studentId: number;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  joinedAt: string;
+}
+
+export interface AdminAuditRow {
+  id: number;
+  adminId: number;
+  adminName: string;
+  action: "create" | "update" | "delete";
+  entity: string;
+  entityId: number | null;
+  summary: string | null;
+  createdAt: string;
 }

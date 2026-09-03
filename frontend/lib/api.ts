@@ -39,6 +39,18 @@ import type {
   ParentChildOverview,
   ParentChildCourseDetail,
   ParentActivitySummary,
+  AdminOverview,
+  AdminUser,
+  AdminParentLink,
+  AdminProgram,
+  AdminLevel,
+  AdminCourse,
+  AdminModule,
+  AdminLesson,
+  AdminAssignment,
+  AdminGroup,
+  AdminGroupStudent,
+  AdminAuditRow,
 } from "@/types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
@@ -441,3 +453,108 @@ export function getParentChildActivity(childId: number): Promise<ParentActivityS
     auth: true,
   });
 }
+
+/* =========================================================
+   Admin panel — browser-side, require an admin token.
+   Every mutating call is audited server-side.
+   ========================================================= */
+
+function aq(params: Record<string, string | number | boolean | undefined>): string {
+  const s = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== "") s.set(k, String(v));
+  }
+  const q = s.toString();
+  return q ? `?${q}` : "";
+}
+
+interface AdminCrud<Row> {
+  list(query?: Record<string, string | number | boolean | undefined>): Promise<Row[]>;
+  get(id: number): Promise<Row>;
+  create(body: unknown): Promise<Row>;
+  update(id: number, body: unknown): Promise<Row>;
+  remove(id: number): Promise<unknown>;
+}
+
+function adminCrud<Row>(base: string): AdminCrud<Row> {
+  return {
+    list: (query = {}) => browserFetch<Row[]>(`${base}${aq(query)}`, { auth: true }),
+    get: (id) => browserFetch<Row>(`${base}/${id}`, { auth: true }),
+    create: (body) =>
+      browserFetch<Row>(base, { method: "POST", body: JSON.stringify(body), auth: true }),
+    update: (id, body) =>
+      browserFetch<Row>(`${base}/${id}`, { method: "PATCH", body: JSON.stringify(body), auth: true }),
+    remove: (id) => browserFetch<unknown>(`${base}/${id}`, { method: "DELETE", auth: true }),
+  };
+}
+
+export const adminApi = {
+  overview: () => browserFetch<AdminOverview>("/admin/overview", { auth: true }),
+
+  audit: (page = 1, limit = 30) =>
+    browserFetchRaw<{ data: AdminAuditRow[]; meta: { page: number; limit: number; total: number } }>(
+      `/admin/audit${aq({ page, limit })}`,
+      { auth: true }
+    ),
+
+  users: {
+    list: (query: Record<string, string | number | boolean | undefined> = {}) =>
+      browserFetchRaw<{ data: AdminUser[]; meta: { page: number; limit: number; total: number } }>(
+        `/admin/users${aq(query)}`,
+        { auth: true }
+      ),
+    get: (id: number) => browserFetch<AdminUser>(`/admin/users/${id}`, { auth: true }),
+    create: (body: unknown) =>
+      browserFetch<AdminUser>("/admin/users", { method: "POST", body: JSON.stringify(body), auth: true }),
+    update: (id: number, body: unknown) =>
+      browserFetch<AdminUser>(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body), auth: true }),
+    remove: (id: number) =>
+      browserFetch<unknown>(`/admin/users/${id}`, { method: "DELETE", auth: true }),
+    setPassword: (id: number, password: string) =>
+      browserFetch<unknown>(`/admin/users/${id}/password`, {
+        method: "POST",
+        body: JSON.stringify({ password }),
+        auth: true,
+      }),
+  },
+
+  parentLinks: {
+    list: (query: Record<string, string | number | boolean | undefined> = {}) =>
+      browserFetch<AdminParentLink[]>(`/admin/parent-links${aq(query)}`, { auth: true }),
+    create: (parentId: number, childId: number) =>
+      browserFetch<unknown>("/admin/parent-links", {
+        method: "POST",
+        body: JSON.stringify({ parentId, childId }),
+        auth: true,
+      }),
+    remove: (parentId: number, childId: number) =>
+      browserFetch<unknown>(`/admin/parent-links${aq({ parentId, childId })}`, {
+        method: "DELETE",
+        auth: true,
+      }),
+  },
+
+  programs: adminCrud<AdminProgram>("/admin/programs"),
+  levels: adminCrud<AdminLevel>("/admin/levels"),
+  courses: adminCrud<AdminCourse>("/admin/courses"),
+  modules: adminCrud<AdminModule>("/admin/modules"),
+  lessons: adminCrud<AdminLesson>("/admin/lessons"),
+  assignments: adminCrud<AdminAssignment>("/admin/assignments"),
+  groups: adminCrud<AdminGroup>("/admin/groups"),
+
+  groupStudents: {
+    list: (groupId: number) =>
+      browserFetch<AdminGroupStudent[]>(`/admin/groups/${groupId}/students`, { auth: true }),
+    add: (groupId: number, studentId: number) =>
+      browserFetch<unknown>(`/admin/groups/${groupId}/students`, {
+        method: "POST",
+        body: JSON.stringify({ studentId }),
+        auth: true,
+      }),
+    remove: (groupId: number, studentId: number) =>
+      browserFetch<unknown>(`/admin/groups/${groupId}/students/${studentId}`, {
+        method: "DELETE",
+        auth: true,
+      }),
+  },
+};

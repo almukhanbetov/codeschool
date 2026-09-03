@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"codeschool/backend/internal/admin"
 	"codeschool/backend/internal/assignments"
 	"codeschool/backend/internal/auth"
 	"codeschool/backend/internal/config"
@@ -126,6 +127,11 @@ func run() error {
 	parentsService := parents.NewService(parentsRepo)
 	parentsHandler := parents.NewHandler(parentsService)
 
+	// Admin panel: full CRUD over users / catalog / groups / links + audit.
+	adminRepo := admin.NewRepository(pool)
+	adminService := admin.NewService(adminRepo, groupsRepo)
+	adminHandler := admin.NewHandler(adminService)
+
 	apiV1 := router.Group("/api/v1")
 	programs.RegisterRoutes(apiV1, programsHandler)
 	levels.RegisterRoutes(apiV1, levelsHandler)
@@ -160,6 +166,11 @@ func run() error {
 	parent := protected.Group("")
 	parent.Use(auth.RequireRole("parent"))
 	parents.RegisterRoutes(parent, parentsHandler)
+
+	// Admin-only endpoints — valid access token + role == "admin".
+	adminGroup := protected.Group("")
+	adminGroup.Use(auth.RequireRole("admin"))
+	admin.RegisterRoutes(adminGroup, adminHandler)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

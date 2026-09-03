@@ -1,8 +1,8 @@
 # CODESCHOOL Backend
 
-Go + Gin + pgx/v5 (`pgxpool`) REST API over PostgreSQL 17. No ORM — plain, parameterized SQL. Modular monolith: one binary, one domain package per resource (`programs`, `levels`, `courses`, `modules`, `lessons`, `users`, `auth`, `enrollments`, `assignments`, `progress`, `submissions`, `groups`, `parents`).
+Go + Gin + pgx/v5 (`pgxpool`) REST API over PostgreSQL 17. No ORM — plain, parameterized SQL. Modular monolith: one binary, one domain package per resource (`programs`, `levels`, `courses`, `modules`, `lessons`, `users`, `auth`, `enrollments`, `assignments`, `progress`, `submissions`, `groups`, `parents`, `admin`).
 
-On top of the catalog + auth + student flow + teacher flow, this stage adds the **parent flow**: a strictly **read-only** view of a parent's linked children — each child's courses, lesson progress, assignments with the teacher's feedback (score / feedback / passed-failed), and a recent-activity timeline. A parent can only ever see children linked to them; every parent endpoint is a `GET`. No parent-linking CRUD (links come from the dev seed / a future admin action) — see the root README.
+On top of the catalog + auth + student + teacher + parent flows, this stage adds the **admin panel API** (`internal/admin`, all routes `role = admin`): full CRUD over users (any role), parent-child links, the whole catalog (programs → levels → courses → modules → lessons → assignments), and groups (+ teacher assignment + membership), plus a read-only **audit log** — every admin mutation is recorded. The admin repository sees *unpublished* rows too (unlike the public catalog repos). See the root README.
 
 ## Architecture
 
@@ -77,7 +77,13 @@ Parent-flow table (`00015`):
 
 | Table | Key rules |
 | --- | --- |
-| `parent_children` (`00015`) | composite `PRIMARY KEY (parent_id, child_id)`; `CHECK (parent_id <> child_id)`; both FK `→ users ON DELETE CASCADE`. **`parent_id` must be a `parent` and `child_id` a `student`** — no linking endpoint this stage, so enforced by the seed / a future admin action, not a trigger |
+| `parent_children` (`00015`) | composite `PRIMARY KEY (parent_id, child_id)`; `CHECK (parent_id <> child_id)`; both FK `→ users ON DELETE CASCADE`. **`parent_id` must be a `parent` and `child_id` a `student`** — enforced by the admin service (`POST /admin/parent-links` checks both roles) or the seed, not a trigger |
+
+Admin-flow table (`00016`):
+
+| Table | Key rules |
+| --- | --- |
+| `admin_audit_log` (`00016`) | `admin_id → users`, `action ∈ (create, update, delete)`, `entity`, `entity_id`, `summary`. One row per admin mutation, written best-effort (a failed audit write never fails the operation it describes). Read-only via `GET /admin/audit`. |
 
 ## Seed data (development only)
 
@@ -190,6 +196,18 @@ Base path: `/api/v1`. Every success response is `{"data": ...}`; every error is 
 
 **Ownership.** Every parent operation first checks `parent_children(parent_id = <token>, child_id = :id)`; an unlinked child yields `404` before any child data is touched. A different parent sees an empty `/children` list and `404` on someone else's child. Child payloads carry **no** password hash, tokens, phone, or email. There are **no** `POST` / `PUT` / `DELETE` routes under `/parent`.
 
+### Admin panel (all require **auth + role `admin`**)
+
+| Area | Routes |
+| --- | --- |
+| overview / audit | `GET /admin/overview`, `GET /admin/audit?page=&limit=` |
+| users | `GET /admin/users?role=&active=&search=&page=&limit=` · `POST /admin/users` (any role, incl. `admin`) · `GET|PATCH|DELETE /admin/users/:id` · `POST /admin/users/:id/password` |
+| parent-child links | `GET /admin/parent-links?parentId=&childId=` · `POST /admin/parent-links` `{parentId, childId}` (role-checked) · `DELETE /admin/parent-links?parentId=&childId=` |
+| catalog | `GET|POST /admin/{programs,levels,courses,modules,lessons,assignments}` + `GET|PATCH|DELETE .../:id`. List filters: `?programId=` (levels), `?levelId=&published=` (courses), `?courseId=` (modules), `?moduleId=` (lessons), `?lessonId=` (assignments) |
+| groups | `GET /admin/groups?teacherId=&courseId=&status=` · `POST /admin/groups` `{courseId, teacherId, ...}` (teacher role-checked) · `GET|PATCH|DELETE /admin/groups/:id` · `GET|POST /admin/groups/:id/students` · `DELETE /admin/groups/:id/students/:studentId` |
+
+**Semantics.** `PATCH` bodies are sparse — only the fields present are changed (an empty string clears a nullable text column). Deletes rely on the schema's `ON DELETE CASCADE` (dropping a program removes its whole subtree; dropping a user removes their enrollments / submissions / memberships / links / owned groups). Guards: an admin cannot delete or deactivate **their own** account, and the **last active admin** cannot be removed or demoted. Adding a student to a group reuses the teacher-stage transaction (membership + guaranteed active enrollment, `max_students` enforced). Duplicate slug / email / phone → `409`; a bad foreign key or enum → `400`. Every successful mutation writes one `admin_audit_log` row.
+
 ### Auth model
 
 - **Access token** — signed JWT (HS256), `sub` = user id, `role`, `iat`, `exp`; 15-min TTL. Sent as `Authorization: Bearer <token>`. Never carries the password hash.
@@ -231,21 +249,22 @@ go test ./...
 go build ./cmd/api
 ```
 
-`go test ./...` runs without a database. The `courses`, `auth`, `enrollments`, `assignments`, `submissions`, `progress`, `groups` and `parents` service tests use in-memory fake repositories — they cover enrollment (success / duplicate / unpublished / only-own-courses), the lesson-completion gate, the progress `Percent()` calc (incl. divide-by-zero), the review flow (`submitted → checking → passed/failed`, `start-review` idempotency, score ≤ points, score required when points > 0, feedback required for `failed`, `passed` cannot be re-reviewed), the resubmission rules (`failed` editable + clears review on resubmit, `checking`/`passed` locked), teacher ownership gates (own group / not another teacher's, own group's student / not an unrelated student, own group's submissions only, cannot review an unrelated submission, pagination clamp), and — for this stage — the **parent link gate** (a linked child is readable; an unlinked or non-existent child yields `ErrChildNotFound` and the repo is never touched; a different parent sees only their own children).
+`go test ./...` runs without a database. The `courses`, `auth`, `enrollments`, `assignments`, `submissions`, `progress`, `groups` and `parents` service tests use in-memory fake repositories — they cover enrollment (success / duplicate / unpublished / only-own-courses), the lesson-completion gate, the progress `Percent()` calc (incl. divide-by-zero), the review flow (`submitted → checking → passed/failed`, `start-review` idempotency, score ≤ points, score required when points > 0, feedback required for `failed`, `passed` cannot be re-reviewed), the resubmission rules (`failed` editable + clears review on resubmit, `checking`/`passed` locked), teacher ownership gates (own group / not another teacher's, own group's student / not an unrelated student, own group's submissions only, cannot review an unrelated submission, pagination clamp), the **parent link gate** (a linked child is readable; an unlinked or non-existent child yields `ErrChildNotFound` and the repo is never touched; a different parent sees only their own children), and — for this stage — the **admin** pure guards (`canRemoveAdminPrivilege`: self / last-admin), user-request validation, `normStr`, and the sparse `PATCH` field-map builders (only-provided fields land; `""` clears a nullable column).
 
 The `auth` suite additionally covers password hashing, JWT sign/verify/expiry, register validation (duplicate email/phone, `admin` rejected, short password), login (wrong password, no user enumeration, inactive rejected), refresh rotation + reuse/revoked/expired rejection, logout idempotency, and the JWT/role middleware (expired token, inactive user, student → `/admin/ping` = 403).
 
-Four integration tests run against a real Postgres — skipped unless `TEST_DATABASE_URL` is set. Each inserts and cleans up its own throwaway fixtures and does not touch seed data:
+Five integration tests run against a real Postgres — skipped unless `TEST_DATABASE_URL` is set. Each inserts and cleans up its own throwaway fixtures and does not touch seed data:
 
 ```bash
 TEST_DATABASE_URL=postgres://codeschool:codeschool@localhost:5432/codeschool?sslmode=disable \
-  go test ./internal/courses/... ./internal/progress/... ./internal/groups/... ./internal/parents/... -run Repository -v
+  go test ./internal/courses/... ./internal/progress/... ./internal/groups/... ./internal/parents/... ./internal/admin/... -run "Repository|FullFlow" -v
 ```
 
 - `courses` — the *published-only* filter on `GET /courses`.
 - `progress` — the lesson-completion transaction (recount + enrollment auto-complete + `lesson_progress` uniqueness).
 - `groups` — `AddStudentTx` (creates the enrollment, enforces `max_students`, blocks duplicates, rejects non-students) and the ownership joins (teacher A ≠ teacher B for groups, students, and submissions).
 - `parents` — `IsLinked` gate (parent A ≠ parent B), the `ListChildren` roll-up aggregates, `ChildCourseDetail` surfacing the teacher's `score`/`feedback`, `ErrCourseNotFound` for an un-enrolled course, and the newest-first activity timeline.
+- `admin` — the full program → assignment CRUD chain, duplicate-slug / bad-FK / bad-enum rejection, role-checked parent links + group teacher assignment, group membership (+ auto-enrollment, `max_students`), the self / last-admin guards, audit rows written, and `ON DELETE CASCADE` on a program drop.
 
 ## Logging & shutdown
 
@@ -253,4 +272,4 @@ Startup logs `database connected` and `server listening on :PORT` — never secr
 
 ## Not in this stage
 
-Admin CRUD (groups, teachers, courses, **parent–child links** — all come from the dev seed or a future admin stage), quiz engine, code execution / sandboxing, AI review, certificates, payments, notifications — see the root README. Student code is **stored only**, never executed. Submissions keep **one current row** per (student, assignment) — a resubmission overwrites it and clears the prior review; per-attempt history is future work. If a lesson was completed and the teacher later marks its assignment `failed`, the lesson progress is **not** rolled back (the UI shows "needs revision" instead) — a stricter mastery workflow is future work. The parent flow is read-only and has no activity pagination yet (last 25 events). Refresh-token cleanup and login rate limiting remain noted as future hardening.
+Quiz engine, code execution / sandboxing, AI review, certificates, payments, notifications — see the root README. Student code is **stored only**, never executed. Submissions keep **one current row** per (student, assignment) — a resubmission overwrites it and clears the prior review; per-attempt history is future work. If a lesson was completed and the teacher later marks its assignment `failed`, the lesson progress is **not** rolled back (the UI shows "needs revision" instead) — a stricter mastery workflow is future work. The parent flow is read-only (last 25 activity events, no pagination). The admin panel has no bulk import, no soft-delete / undo (deletes are hard + cascading), and no per-field audit diff (the audit log records action + entity + a short summary). Refresh-token cleanup and login rate limiting remain noted as future hardening.

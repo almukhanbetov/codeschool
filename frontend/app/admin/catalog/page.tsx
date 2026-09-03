@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { AdminOverview } from "@/components/admin/AdminOverview";
+import { AdminCatalog } from "@/components/admin/AdminCatalog";
 
-export const metadata: Metadata = { title: "Admin — CODESCHOOL" };
+export const metadata: Metadata = { title: "Catalog — CODESCHOOL" };
 
 export default function Page() {
   return (
     <RequireAuth roles={["admin"]}>
       <AdminShell>
-        <AdminOverview />
+        <AdminCatalog />
       </AdminShell>
     </RequireAuth>
   );

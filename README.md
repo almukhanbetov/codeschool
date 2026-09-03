@@ -19,9 +19,9 @@ Go Gin :8080  (modular monolith, no ORM)
 PostgreSQL 17 :5432 (container) / :5433 (host-mapped, see below)
 ```
 
-The catalog (`programs → levels → courses → modules → lessons`) is read-only. Auth, the **student learning flow** (enrol → lesson progress → submit assignment → complete → recalculated course progress), and the **teacher flow** (groups → students → pending-review queue → score + feedback → passed/failed → resubmit) are all in place.
+Auth, the **student learning flow** (enrol → progress → submit → complete), the **teacher flow** (groups → review queue → score + feedback → passed/failed → resubmit), and the **parent flow** (read-only view of linked children, their progress, assignments + teacher feedback, activity timeline) are all in place.
 
-This stage adds the **parent flow**: a parent opens their dashboard → sees their linked children → opens a child → sees that child's courses and progress → opens a course → sees lesson progress + every assignment with the **teacher's feedback** → checks the child's recent **activity timeline**. It is strictly **read-only** — every parent endpoint is a `GET`, and a parent can only ever see children linked to them. No parent-linking CRUD — links come from the dev seed / a future admin stage. See [What's not in this stage](#whats-not-in-this-stage).
+This stage adds the **admin panel**: a production-oriented back office for the whole LMS. An admin manages **users** (create/edit/deactivate/delete any role, reset passwords), **parent-child links**, the entire **catalog** (programs → levels → courses → modules → lessons → assignments, incl. publish toggles), and **groups** (create, assign a teacher, add/remove students). Every `/admin` route requires `role = admin`, and every mutation is written to a read-only **audit log**. See [What's not in this stage](#whats-not-in-this-stage).
 
 ## Project structure
 
@@ -147,6 +147,20 @@ GET  /api/v1/parent/children
 GET  /api/v1/parent/children/:id
 GET  /api/v1/parent/children/:id/courses/:courseId    lesson progress + assignments + teacher feedback
 GET  /api/v1/parent/children/:id/activity             recent-activity timeline
+
+# admin panel (auth + role=admin)
+GET    /api/v1/admin/overview
+GET    /api/v1/admin/audit                            ?page=&limit=
+GET|POST /api/v1/admin/users                          ?role=&active=&search=&page=&limit=
+GET|PATCH|DELETE /api/v1/admin/users/:id
+POST   /api/v1/admin/users/:id/password
+GET|POST|DELETE /api/v1/admin/parent-links            ?parentId=&childId=
+GET|POST /api/v1/admin/{programs,levels,courses,modules,lessons,assignments}
+GET|PATCH|DELETE /api/v1/admin/{...}/:id              (list filters by parent id + ?published=)
+GET|POST /api/v1/admin/groups                         ?teacherId=&courseId=&status=
+GET|PATCH|DELETE /api/v1/admin/groups/:id
+GET|POST /api/v1/admin/groups/:id/students
+DELETE /api/v1/admin/groups/:id/students/:studentId
 ```
 
 ## Frontend ↔ backend integration
@@ -194,10 +208,21 @@ GET  /api/v1/parent/children/:id/activity             recent-activity timeline
 - **`/parent/children/[id]/courses/[courseId]`** — lesson progress (✓/→/○) + one panel per assignment showing the child's submission badge and, when reviewed, the **teacher's feedback** in a pass/fail-coloured callout with the score.
 - All `/parent/*` routes wrapped in `RequireAuth roles={["parent"]}`. New strings live under `data/translations.ts` → `family`, RU + KZ + EN.
 
+## Admin panel on the frontend
+
+- `lib/api.ts` gains `adminApi` — a typed client (`overview`, `audit`, `users`, `parentLinks`, `programs`/`levels`/`courses`/`modules`/`lessons`/`assignments` via an `adminCrud<T>` factory, `groups`, `groupStudents`). Same browser client + 401-refresh-retry.
+- **`/admin`** — no longer a placeholder: a section-nav shell (`AdminShell`) + an **overview** dashboard (user counts by role, active users, programs, courses, published, groups, pending reviews, links).
+- **`/admin/users`** — filter by role / status / free-text search, a reusable `EntityManager` table with an inline create/edit form, deactivate/activate, a reset-password dialog, delete.
+- **`/admin/catalog`** — a breadcrumb-driven hierarchical browser: programs → levels → courses → modules → lessons → assignments, full CRUD + publish toggles at every level (reuses `EntityManager`).
+- **`/admin/groups`** — group table + create/edit (course & teacher pickers), a "manage students" dialog (add by id, remove).
+- **`/admin/links`** — parent-child links: a parent/child picker to create, a table to view/remove.
+- **`/admin/audit`** — read-only paginated log of every admin action.
+- All `/admin/*` routes wrapped in `RequireAuth roles={["admin"]}`. New strings live under `data/translations.ts` → `admin`, RU + KZ + EN. Existing table/form/dialog tokens are reused; only a small `.admin-*` block was added to `globals.css`. No existing design was changed.
+
 Frontend route guards are a **UX** boundary; the backend authorization on every protected API call is the real security boundary.
 
 **Security trade-off note:** the refresh token is an HttpOnly, `SameSite=Lax` cookie scoped to `/api/v1/auth` (never in `localStorage`, never in a response body), and the access token is memory-only — so neither is readable by page JavaScript (XSS can't exfiltrate them). `Secure` is off in local development (plain HTTP) and on in production. Because the cookie lives on the API origin, Next.js middleware/`proxy` can't read it, so route protection is client-side only (see above).
 
 ## What's not in this stage
 
-Admin CRUD (groups, teachers, courses, **parent–child links** — an admin stage; all come from the dev seed for now), quiz engine, code execution / sandboxing, AI review, certificates, payments, notifications, file storage (MinIO). Student code is stored, never run. **One current submission** per assignment: a resubmission overwrites it and clears the prior review — no per-attempt history. A `failed` verdict does not roll back a completed lesson (the UI flags "needs revision"). The parent flow is read-only and its activity timeline shows the last 25 events (no pagination). Refresh-token cleanup scheduling and login rate limiting remain future hardening. Deferred to later stages — see `backend/README.md`'s own scope note.
+Quiz engine, code execution / sandboxing, AI review, certificates, payments, notifications, file storage (MinIO). Student code is stored, never run. **One current submission** per assignment: a resubmission overwrites it and clears the prior review — no per-attempt history. A `failed` verdict does not roll back a completed lesson (the UI flags "needs revision"). The parent flow is read-only (last 25 activity events, no pagination). The admin panel: hard deletes only (cascading, no undo), no bulk import, no per-field audit diff, and it edits DB content directly — course/lesson text is still not per-language. Refresh-token cleanup scheduling and login rate limiting remain future hardening. Deferred to later stages — see `backend/README.md`'s own scope note.
