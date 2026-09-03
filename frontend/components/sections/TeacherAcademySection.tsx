@@ -26,7 +26,7 @@ export function TeacherAcademySection() {
   const { ref: ctaRef, className: ctaClassName } = useReveal<HTMLDivElement>();
 
   return (
-    <section className="section teacher-section" id="teachers">
+    <section className="section teacher-section">
       <div className="container">
         <div className="teacher-panel">
           <SectionHeading
@@ -43,7 +43,7 @@ export function TeacherAcademySection() {
           </div>
 
           <div ref={ctaRef} className={`teacher-cta-row ${ctaClassName}`}>
-            <Button href="/teacher" variant="primary" size="lg">
+            <Button href="/for-teachers" variant="primary" size="lg">
               {t.teacher.cta}
             </Button>
           </div>

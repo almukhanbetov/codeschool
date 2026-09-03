@@ -32,7 +32,7 @@ export function LearningPathSection() {
   const { t } = useLanguage();
 
   return (
-    <section className="section path-section" id="path">
+    <section className="section path-section">
       <div className="container">
         <SectionHeading eyebrow={t.path.eyebrow} title={t.path.title} description={t.path.subtitle} />
 

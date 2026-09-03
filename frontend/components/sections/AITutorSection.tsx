@@ -10,7 +10,7 @@ export function AITutorSection() {
   const { ref: chatRef, className: chatClassName } = useReveal<HTMLDivElement>();
 
   return (
-    <section className="section aitutor-section" id="ai-tutor">
+    <section className="section aitutor-section">
       <div className="container aitutor-inner">
         <SectionHeading
           eyebrow={t.aitutor.eyebrow}

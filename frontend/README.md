@@ -54,7 +54,7 @@ frontend/
 │                            # projects, learning path, translations, ...) — the shape a
 │                            # future `GET /api/v1/courses` etc. would fill in.
 │
-├── hooks/                  # useLanguage, useTheme, useReveal, useScrollSpy, useHeaderScroll
+├── hooks/                  # useLanguage, useTheme, useReveal, useHeaderScroll
 ├── lib/                    # icons.tsx (lucide-react registry), api.ts (fetch placeholder)
 ├── types/                  # Language, Theme, Translations, and all data-item types
 └── public/
@@ -75,7 +75,7 @@ frontend/
 
 - **Server Components by default**: `app/layout.tsx` and `app/page.tsx` do no client-side work themselves — they just assemble Client Components.
 - **`"use client"` where it's earned**: `LanguageSwitcher`, `ThemeToggle`, `MobileMenu`, `CourseFilter`, `AnimatedCounter` are the components the spec called out, and they are Client Components for concrete browser-API reasons (localStorage, IntersectionObserver, click state).
-- One honest deviation from "server components everywhere": because language switching has to update visible text instantly with no page reload and no per-locale routing (`/ru`, `/en`, ...), the section components that render translated copy (`HeroSection`, `CoursesSection`, etc.) are Client Components too — there's no way to keep them server-only and still have `useLanguage()` update their text without a reload. Each section is still its own small, focused component (never one giant page-sized Client Component), and cross-cutting browser behavior (scroll-reveal, scroll-spy, header shadow) lives in dedicated hooks (`useReveal`, `useScrollSpy`, `useHeaderScroll`) rather than being duplicated inline.
+- One honest deviation from "server components everywhere": because language switching has to update visible text instantly with no page reload and no per-locale routing (`/ru`, `/en`, ...), the section components that render translated copy (`HeroSection`, `CoursesSection`, etc.) are Client Components too — there's no way to keep them server-only and still have `useLanguage()` update their text without a reload. Each section is still its own small, focused component (never one giant page-sized Client Component), and cross-cutting browser behavior (scroll-reveal, header shadow) lives in dedicated hooks (`useReveal`, `useHeaderScroll`) rather than being duplicated inline. The public site is route-based — navigation links to real pages (`/courses`, `/programming`, …), not homepage hash anchors.
 
 ## Data-driven sections
 

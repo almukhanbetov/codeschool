@@ -9,7 +9,7 @@ export function ProjectsSection() {
   const { t } = useLanguage();
 
   return (
-    <section className="section projects-section" id="projects">
+    <section className="section projects-section">
       <div className="container">
         <SectionHeading
           eyebrow={t.projects.eyebrow}

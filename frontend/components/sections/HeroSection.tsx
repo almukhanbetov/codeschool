@@ -11,7 +11,7 @@ export function HeroSection() {
   const { ref: visualRef, className: visualClassName } = useReveal<HTMLDivElement>();
 
   return (
-    <section className="hero" id="hero">
+    <section className="hero">
       <div className="hero-bg" aria-hidden="true">
         <div className="glow glow-1" />
         <div className="glow glow-2" />

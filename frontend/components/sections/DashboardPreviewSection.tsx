@@ -11,7 +11,7 @@ export function DashboardPreviewSection() {
   const { ref: mockRef, className: mockClassName } = useReveal<HTMLDivElement>();
 
   return (
-    <section className="section dashboard-section" id="dashboard">
+    <section className="section dashboard-section">
       <div className="container">
         <SectionHeading
           eyebrow={t.dashboard.eyebrow}

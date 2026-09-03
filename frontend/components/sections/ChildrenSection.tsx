@@ -22,7 +22,7 @@ export function ChildrenSection() {
   const { ref: textRef, className: textClassName } = useReveal<HTMLDivElement>();
 
   return (
-    <section className="section children-section" id="children">
+    <section className="section children-section">
       <div className="container children-inner">
         <div ref={textRef} className={`children-text ${textClassName}`}>
           <span className="eyebrow">{t.children.eyebrow}</span>

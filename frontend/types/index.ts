@@ -2,16 +2,6 @@ export type Language = "ru" | "kz" | "en";
 
 export type Theme = "dark" | "light";
 
-export interface NavTranslations {
-  home: string;
-  directions: string;
-  courses: string;
-  children: string;
-  teachers: string;
-  parents: string;
-  projects: string;
-  about: string;
-}
 
 export interface HeaderTranslations {
   login: string;
@@ -800,7 +790,6 @@ export interface SiteTranslations {
 
 export interface Translations {
   meta: { title: string };
-  nav: NavTranslations;
   header: HeaderTranslations;
   auth: AuthTranslations;
   student: StudentTranslations;

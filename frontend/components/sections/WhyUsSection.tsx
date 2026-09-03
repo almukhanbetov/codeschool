@@ -22,7 +22,7 @@ export function WhyUsSection() {
   const { t } = useLanguage();
 
   return (
-    <section className="section whyus-section" id="whyus">
+    <section className="section whyus-section">
       <div className="container">
         <SectionHeading eyebrow={t.whyus.eyebrow} title={t.whyus.title} />
 

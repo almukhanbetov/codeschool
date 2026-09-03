@@ -26,7 +26,7 @@ export function InfoPlaceholder({
             <Button href={backHref} variant="primary">
               {copy.backCta}
             </Button>
-            <Link href="/">← {t.nav.home}</Link>
+            <Link href="/">← {t.site.home}</Link>
           </div>
         </div>
       </div>

@@ -3,16 +3,6 @@ import type { Language, Translations } from "@/types";
 export const translations: Record<Language, Translations> = {
   ru: {
     meta: { title: "CODESCHOOL — Учись создавать технологии будущего" },
-    nav: {
-      home: "Главная",
-      directions: "Направления",
-      courses: "Курсы",
-      children: "Детям",
-      teachers: "Преподавателям",
-      parents: "Родителям",
-      projects: "Проекты",
-      about: "О платформе",
-    },
     header: { login: "Войти", cta: "Начать обучение", logout: "Выйти" },
     auth: {
       loginTitle: "С возвращением",
@@ -816,16 +806,6 @@ export const translations: Record<Language, Translations> = {
 
   kz: {
     meta: { title: "CODESCHOOL — Болашақ технологияларын жасауды үйрен" },
-    nav: {
-      home: "Басты бет",
-      directions: "Бағыттар",
-      courses: "Курстар",
-      children: "Балаларға",
-      teachers: "Мұғалімдерге",
-      parents: "Ата-аналарға",
-      projects: "Жобалар",
-      about: "Платформа туралы",
-    },
     header: { login: "Кіру", cta: "Оқуды бастау", logout: "Шығу" },
     auth: {
       loginTitle: "Қайта келгеніңізге қуаныштымыз",
@@ -1625,16 +1605,6 @@ export const translations: Record<Language, Translations> = {
 
   en: {
     meta: { title: "CODESCHOOL — Learn to Build the Technology of Tomorrow" },
-    nav: {
-      home: "Home",
-      directions: "Directions",
-      courses: "Courses",
-      children: "For Kids",
-      teachers: "For Teachers",
-      parents: "For Parents",
-      projects: "Projects",
-      about: "About",
-    },
     header: { login: "Log in", cta: "Start learning", logout: "Log out" },
     auth: {
       loginTitle: "Welcome back",

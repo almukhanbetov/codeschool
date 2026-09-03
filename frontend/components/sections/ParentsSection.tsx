@@ -11,7 +11,7 @@ export function ParentsSection() {
   const { ref: cardRef, className: cardClassName } = useReveal<HTMLDivElement>();
 
   return (
-    <section className="section parents-section" id="parents">
+    <section className="section parents-section">
       <div className="container parents-inner">
         <SectionHeading eyebrow={t.parents.eyebrow} title={t.parents.title} description={t.parents.desc} align="left" />
 

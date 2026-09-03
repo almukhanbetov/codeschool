@@ -8,7 +8,7 @@ export function PhilosophySection() {
   const { ref, className } = useReveal<HTMLParagraphElement>();
 
   return (
-    <section className="section philosophy-section" id="about">
+    <section className="section philosophy-section">
       <div className="container">
         <p ref={ref} className={`philosophy-text ${className}`}>
           <span>{t.philosophy.line1}</span>

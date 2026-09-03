@@ -42,7 +42,7 @@ export function CoursesSection({ courses, loadError = false }: CoursesSectionPro
   );
 
   return (
-    <section className="section courses-section" id="courses">
+    <section className="section courses-section">
       <div className="container">
         <SectionHeading
           eyebrow={t.courses.eyebrow}

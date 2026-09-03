@@ -32,13 +32,6 @@ export function Button({ variant = "primary", size = "md", className, children, 
 
   if ("href" in rest && rest.href) {
     const { href, ...anchorRest } = rest;
-    if (href.startsWith("#")) {
-      return (
-        <a href={href} className={classes} {...anchorRest}>
-          {children}
-        </a>
-      );
-    }
     return (
       <Link href={href} className={classes} {...anchorRest}>
         {children}
