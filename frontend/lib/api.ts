@@ -85,6 +85,14 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080
 // ("backend:8080") the browser can't resolve, hence a separate base.
 export const BROWSER_API_URL = process.env.NEXT_PUBLIC_BROWSER_API_URL ?? API_URL;
 
+// apiFetch is isomorphic — the same catalog reads (getCourses, getCourseContent,
+// …) run in Server Components *and* in Client Components. Server-side it must
+// use the internal Docker hostname; in the browser it must use the
+// externally-reachable one. `browserFetch` is always browser-only, so it just
+// uses BROWSER_API_URL directly.
+const apiBase = (): string =>
+  typeof window === "undefined" ? API_URL : BROWSER_API_URL;
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -113,7 +121,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     // being frozen into the build (Next.js's `fetch` is cache: 'force-cache'
     // by default in Server Components, which would otherwise bake API
     // responses into the static HTML at build time).
-    res = await fetch(`${API_URL}${path}`, { cache: "no-store", ...init });
+    res = await fetch(`${apiBase()}${path}`, { cache: "no-store", ...init });
   } catch {
     throw new ApiError(0, "NETWORK_ERROR", "Could not reach the API");
   }
