@@ -31,6 +31,15 @@ type submissionGate interface {
 	CountNonDraftForAssignments(ctx context.Context, studentID int64, assignmentIDs []int64) (int, error)
 }
 
+// quizGate distinguishes quiz assignments from the rest and reports how many
+// of a set the student has passed. Satisfied by *quizzes.Service. Quiz
+// assignments have no submissions row (spec §46), so lesson completion checks
+// them via a passing attempt instead (spec §44, §45).
+type quizGate interface {
+	QuizAssignmentIDs(ctx context.Context, assignmentIDs []int64) ([]int64, error)
+	CountPassedForAssignments(ctx context.Context, studentID int64, assignmentIDs []int64) (int, error)
+}
+
 type repository interface {
 	Start(ctx context.Context, studentID, lessonID int64) (LessonProgress, error)
 	CompleteLessonTx(ctx context.Context, studentID, lessonID, courseID int64) (CompleteResult, error)
@@ -51,6 +60,7 @@ type Service struct {
 	enrollState enrollmentStatusReader
 	assignments assignmentGate
 	submissions submissionGate
+	quizzes     quizGate
 }
 
 func NewService(
@@ -60,6 +70,7 @@ func NewService(
 	enrollState enrollmentStatusReader,
 	assignments assignmentGate,
 	submissions submissionGate,
+	quizzes quizGate,
 ) *Service {
 	return &Service{
 		repo:        repo,
@@ -68,6 +79,7 @@ func NewService(
 		enrollState: enrollState,
 		assignments: assignments,
 		submissions: submissions,
+		quizzes:     quizzes,
 	}
 }
 
@@ -117,12 +129,40 @@ func (s *Service) CompleteLesson(ctx context.Context, studentID, lessonID int64)
 		return CompleteLessonResponse{}, err
 	}
 	if len(assignmentIDs) > 0 {
-		done, err := s.submissions.CountNonDraftForAssignments(ctx, studentID, assignmentIDs)
+		quizIDs, err := s.quizzes.QuizAssignmentIDs(ctx, assignmentIDs)
 		if err != nil {
 			return CompleteLessonResponse{}, err
 		}
-		if done < len(assignmentIDs) {
-			return CompleteLessonResponse{}, ErrAssignmentIncomplete
+		isQuiz := make(map[int64]bool, len(quizIDs))
+		for _, id := range quizIDs {
+			isQuiz[id] = true
+		}
+		var nonQuizIDs []int64
+		for _, id := range assignmentIDs {
+			if !isQuiz[id] {
+				nonQuizIDs = append(nonQuizIDs, id)
+			}
+		}
+
+		// Non-quiz assignments: a non-draft submission for each (unchanged).
+		if len(nonQuizIDs) > 0 {
+			done, err := s.submissions.CountNonDraftForAssignments(ctx, studentID, nonQuizIDs)
+			if err != nil {
+				return CompleteLessonResponse{}, err
+			}
+			if done < len(nonQuizIDs) {
+				return CompleteLessonResponse{}, ErrAssignmentIncomplete
+			}
+		}
+		// Quiz assignments: at least one passing attempt for each (spec §45).
+		if len(quizIDs) > 0 {
+			passed, err := s.quizzes.CountPassedForAssignments(ctx, studentID, quizIDs)
+			if err != nil {
+				return CompleteLessonResponse{}, err
+			}
+			if passed < len(quizIDs) {
+				return CompleteLessonResponse{}, ErrAssignmentIncomplete
+			}
 		}
 	}
 

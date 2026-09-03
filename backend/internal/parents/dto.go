@@ -67,6 +67,11 @@ type AssignmentFeedbackItem struct {
 	TeacherFeedback *string    `json:"teacherFeedback"`
 	SubmittedAt     *time.Time `json:"submittedAt"`
 	CheckedAt       *time.Time `json:"checkedAt"`
+
+	// Quiz roll-up — populated only for assignmentType = "quiz" (spec §71).
+	QuizAttempts    *int  `json:"quizAttempts"`
+	QuizBestPercent *int  `json:"quizBestPercent"`
+	QuizPassed      *bool `json:"quizPassed"`
 }
 
 // ChildCourseDetail is GET /parent/children/:id/courses/:courseId.

@@ -80,6 +80,17 @@ type SubmissionSummaryItem struct {
 	SubmittedAt     *time.Time `json:"submittedAt"`
 }
 
+// QuizResultItem is one published quiz's roll-up in the student-detail view
+// (read-only — teachers never edit an automatic quiz score, spec §69).
+type QuizResultItem struct {
+	AssignmentID int64  `json:"assignmentId"`
+	Title        string `json:"title"`
+	LessonTitle  string `json:"lessonTitle"`
+	Attempts     int    `json:"attempts"`
+	BestPercent  *int   `json:"bestPercent"`
+	Passed       bool   `json:"passed"`
+}
+
 // StudentDetail is GET /teacher/groups/:id/students/:studentId.
 type StudentDetail struct {
 	Student     StudentBrief            `json:"student"`
@@ -87,6 +98,7 @@ type StudentDetail struct {
 	Progress    ProgressBrief           `json:"progress"`
 	Lessons     []LessonProgressItem    `json:"lessons"`
 	Submissions []SubmissionSummaryItem `json:"submissions"`
+	QuizResults []QuizResultItem        `json:"quizResults"`
 }
 
 // SubmissionListItem is one row of GET /teacher/submissions.

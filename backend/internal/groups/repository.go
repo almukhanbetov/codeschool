@@ -303,7 +303,38 @@ func (r *Repository) StudentDetail(ctx context.Context, studentID, courseID int6
 		}
 		d.Submissions = append(d.Submissions, si)
 	}
-	return d, subRows.Err()
+	if err := subRows.Err(); err != nil {
+		return StudentDetail{}, err
+	}
+
+	// Published quizzes in the course + this student's attempt roll-up
+	// (read-only; quizzes never enter the manual review queue, spec §69, §87).
+	quizRows, err := r.pool.Query(ctx, `
+		SELECT a.id, a.title, l.title,
+		       count(qa.id) FILTER (WHERE qa.status = 'submitted') AS attempts,
+		       max(qa.percent) FILTER (WHERE qa.status = 'submitted') AS best_percent,
+		       COALESCE(bool_or(qa.passed), FALSE) AS passed
+		FROM assignments a
+		JOIN lessons l ON l.id = a.lesson_id
+		JOIN modules m ON m.id = l.module_id
+		LEFT JOIN quiz_attempts qa ON qa.assignment_id = a.id AND qa.student_id = $1
+		WHERE m.course_id = $2 AND a.is_published = TRUE AND a.assignment_type = 'quiz'
+		GROUP BY a.id, a.title, l.title, m.position, l.position, a.position
+		ORDER BY m.position, l.position, a.position, a.id
+	`, studentID, courseID)
+	if err != nil {
+		return StudentDetail{}, fmt.Errorf("student quiz results: %w", err)
+	}
+	defer quizRows.Close()
+	d.QuizResults = []QuizResultItem{}
+	for quizRows.Next() {
+		var qi QuizResultItem
+		if err := quizRows.Scan(&qi.AssignmentID, &qi.Title, &qi.LessonTitle, &qi.Attempts, &qi.BestPercent, &qi.Passed); err != nil {
+			return StudentDetail{}, fmt.Errorf("scan student quiz result: %w", err)
+		}
+		d.QuizResults = append(d.QuizResults, qi)
+	}
+	return d, quizRows.Err()
 }
 
 // ListSubmissionsForTeacher returns a page of submissions belonging to the

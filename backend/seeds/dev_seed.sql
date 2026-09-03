@@ -173,9 +173,9 @@ VALUES
         'code', 1, TRUE
     );
 
--- ---------- Assignments (for 3 "Python Start" lessons) ----------
--- Cleared and re-inserted by lesson, so this stays re-runnable. NOTE: no
--- 'quiz' seed on this stage — quiz has no engine yet.
+-- ---------- Assignments (for "Python Start" lessons) ----------
+-- Cleared and re-inserted by lesson, so this stays re-runnable. The 'quiz'
+-- assignment on "Цикл for" is fleshed out with settings + questions below.
 DELETE FROM assignments
 WHERE lesson_id IN (
     SELECT l.id FROM lessons l
@@ -211,7 +211,99 @@ VALUES
         NULL,
         NULL,
         10, 1, TRUE
+    ),
+    (
+        (SELECT id FROM lessons WHERE slug = 'tsikl-for'),
+        'Тест: Циклы Python',
+        'Небольшой тест по циклам for и функции range().',
+        'quiz',
+        NULL,
+        NULL,
+        0, 1, TRUE
     );
+
+-- ---------- Quiz engine seed: "Тест: Циклы Python" ----------
+-- quiz_questions / quiz_options / quiz_settings cascade off the assignment
+-- deleted above, so this always inserts a fresh set (spec §73, §74).
+INSERT INTO quiz_settings (assignment_id, pass_percent, max_attempts, show_correct_answers, show_explanations)
+SELECT a.id, 70, NULL, TRUE, TRUE
+FROM assignments a
+JOIN lessons l ON l.id = a.lesson_id AND l.slug = 'tsikl-for'
+WHERE a.assignment_type = 'quiz'
+ON CONFLICT (assignment_id) DO UPDATE SET
+    pass_percent = EXCLUDED.pass_percent,
+    max_attempts = EXCLUDED.max_attempts,
+    show_correct_answers = EXCLUDED.show_correct_answers,
+    show_explanations = EXCLUDED.show_explanations,
+    updated_at = NOW();
+
+DO $quiz$
+DECLARE
+    aid BIGINT;
+    qid BIGINT;
+BEGIN
+    SELECT a.id INTO aid
+    FROM assignments a
+    JOIN lessons l ON l.id = a.lesson_id AND l.slug = 'tsikl-for'
+    WHERE a.assignment_type = 'quiz';
+
+    IF aid IS NULL THEN
+        RETURN;
+    END IF;
+
+    -- Q1 — single_choice
+    INSERT INTO quiz_questions (assignment_id, question_text, question_type, points, position, explanation)
+    VALUES (aid, E'Что выведет код?\n\nfor i in range(3):\n    print(i)', 'single_choice', 2, 1,
+            'range(3) даёт числа 0, 1, 2 — цикл печатает их по одному.')
+    RETURNING id INTO qid;
+    INSERT INTO quiz_options (question_id, option_text, is_correct, position) VALUES
+        (qid, '1 2 3', FALSE, 1),
+        (qid, '0 1 2', TRUE, 2),
+        (qid, '0 1 2 3', FALSE, 3),
+        (qid, 'Ошибка', FALSE, 4);
+
+    -- Q2 — single_choice
+    INSERT INTO quiz_questions (assignment_id, question_text, question_type, points, position, explanation)
+    VALUES (aid, 'Что делает range(3)?', 'single_choice', 2, 2,
+            'range(3) — это последовательность 0, 1, 2 (три числа, начиная с нуля).')
+    RETURNING id INTO qid;
+    INSERT INTO quiz_options (question_id, option_text, is_correct, position) VALUES
+        (qid, 'Последовательность 1, 2, 3', FALSE, 1),
+        (qid, 'Последовательность 0, 1, 2', TRUE, 2),
+        (qid, 'Последовательность 0, 1, 2, 3', FALSE, 3);
+
+    -- Q3 — single_choice
+    INSERT INTO quiz_questions (assignment_id, question_text, question_type, points, position, explanation)
+    VALUES (aid, 'Какое ключевое слово используется для цикла по последовательности?', 'single_choice', 2, 3,
+            'Цикл по элементам последовательности в Python пишется через for.')
+    RETURNING id INTO qid;
+    INSERT INTO quiz_options (question_id, option_text, is_correct, position) VALUES
+        (qid, 'for', TRUE, 1),
+        (qid, 'loop', FALSE, 2),
+        (qid, 'foreach', FALSE, 3),
+        (qid, 'repeat', FALSE, 4);
+
+    -- Q4 — true_false
+    INSERT INTO quiz_questions (assignment_id, question_text, question_type, points, position, explanation)
+    VALUES (aid, 'Цикл for может выполнять блок кода несколько раз.', 'true_false', 2, 4,
+            'Да — тело цикла повторяется для каждого элемента последовательности.')
+    RETURNING id INTO qid;
+    INSERT INTO quiz_options (question_id, option_text, is_correct, position) VALUES
+        (qid, 'Верно', TRUE, 1),
+        (qid, 'Неверно', FALSE, 2);
+
+    -- Q5 — multiple_choice
+    INSERT INTO quiz_questions (assignment_id, question_text, question_type, points, position, explanation)
+    VALUES (aid, 'Какие из этих конструкций являются циклами в Python?', 'multiple_choice', 2, 5,
+            'Циклы в Python — это for и while. if — это условие, def — объявление функции.')
+    RETURNING id INTO qid;
+    INSERT INTO quiz_options (question_id, option_text, is_correct, position) VALUES
+        (qid, 'for', TRUE, 1),
+        (qid, 'while', TRUE, 2),
+        (qid, 'if', FALSE, 3),
+        (qid, 'def', FALSE, 4);
+END
+$quiz$;
 
 -- ---------- Auto-enrol the dev student in "Python Start" ----------
 -- No-op if seeds/dev_seed_users.sql has not been run yet, and idempotent

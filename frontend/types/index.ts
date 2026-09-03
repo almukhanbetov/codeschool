@@ -399,6 +399,12 @@ export interface TeachTranslations {
   prevPage: string;
   nextPage: string;
   notReviewable: string;
+  quizResults: string;
+  quizBest: string;
+  quizAttempts: string;
+  quizPassed: string;
+  quizFailed: string;
+  quizNotTaken: string;
 }
 
 export interface FamilyTranslations {
@@ -548,6 +554,66 @@ export interface AdminTranslations {
   auditAction: string;
   auditEntity: string;
   auditSummary: string;
+  // quiz authoring
+  quizConfigure: string;
+  quizEditorTitle: string;
+  quizSettings: string;
+  quizPassPercent: string;
+  quizMaxAttempts: string;
+  quizMaxAttemptsHint: string;
+  quizShowCorrect: string;
+  quizShowExplanations: string;
+  quizQuestions: string;
+  quizAddQuestion: string;
+  quizAddOption: string;
+  quizQuestionText: string;
+  quizQuestionType: string;
+  quizExplanation: string;
+  quizCorrect: string;
+  quizOptionText: string;
+  quizNeedsFix: string;
+  quizNotAQuiz: string;
+  quizSingleChoice: string;
+  quizMultipleChoice: string;
+  quizTrueFalse: string;
+  quizDeactivatedNote: string;
+}
+
+export interface QuizTranslations {
+  startQuiz: string;
+  continueQuiz: string;
+  retakeQuiz: string;
+  question: string;
+  of: string;
+  back: string;
+  next: string;
+  finishQuiz: string;
+  submitting: string;
+  loading: string;
+  loadError: string;
+  result: string;
+  correct: string;
+  incorrect: string;
+  passed: string;
+  failed: string;
+  tryAgain: string;
+  attempts: string;
+  attemptsLeft: string;
+  noAttemptsLeft: string;
+  bestResult: string;
+  yourAnswer: string;
+  correctAnswer: string;
+  explanation: string;
+  passThreshold: string;
+  chooseOne: string;
+  chooseMany: string;
+  reviewAnswers: string;
+  notConfigured: string;
+  noQuestions: string;
+  backToLesson: string;
+  unansweredWarning: string;
+  points: string;
+  attemptNumber: string;
 }
 
 export interface Translations {
@@ -557,6 +623,7 @@ export interface Translations {
   auth: AuthTranslations;
   student: StudentTranslations;
   learn: LearnTranslations;
+  quiz: QuizTranslations;
   teach: TeachTranslations;
   family: FamilyTranslations;
   admin: AdminTranslations;
@@ -942,12 +1009,22 @@ export interface TeacherSubmissionSummary {
   submittedAt: string | null;
 }
 
+export interface TeacherQuizResult {
+  assignmentId: number;
+  title: string;
+  lessonTitle: string;
+  attempts: number;
+  bestPercent: number | null;
+  passed: boolean;
+}
+
 export interface TeacherStudentDetail {
   student: TeacherStudentBrief;
   course: TeacherCourseBrief;
   progress: TeacherProgressBrief;
   lessons: TeacherLessonProgress[];
   submissions: TeacherSubmissionSummary[];
+  quizResults: TeacherQuizResult[];
 }
 
 export interface TeacherSubmissionListItem {
@@ -1060,6 +1137,9 @@ export interface ParentAssignmentFeedback {
   teacherFeedback: string | null;
   submittedAt: string | null;
   checkedAt: string | null;
+  quizAttempts: number | null;
+  quizBestPercent: number | null;
+  quizPassed: boolean | null;
 }
 
 export interface ParentChildCourseDetail {
@@ -1241,4 +1321,157 @@ export interface AdminAuditRow {
   entityId: number | null;
   summary: string | null;
   createdAt: string;
+}
+
+/* ---- Quiz engine (backend/internal/quizzes) ---- */
+
+export type QuizQuestionType = "single_choice" | "multiple_choice" | "true_false";
+export type QuizAttemptStatus = "in_progress" | "submitted";
+
+export interface QuizStudentOption {
+  id: number;
+  optionText: string;
+  position: number;
+}
+
+export interface QuizStudentQuestion {
+  id: number;
+  questionText: string;
+  questionType: QuizQuestionType;
+  points: number;
+  position: number;
+  options: QuizStudentOption[];
+}
+
+export interface QuizStudentQuiz {
+  assignmentId: number;
+  title: string;
+  passPercent: number;
+  questions: QuizStudentQuestion[];
+}
+
+export interface QuizAttemptBrief {
+  id: number;
+  status: QuizAttemptStatus;
+  startedAt: string;
+  submittedAt: string | null;
+}
+
+export interface QuizStartResponse {
+  attempt: QuizAttemptBrief;
+  quiz: QuizStudentQuiz;
+}
+
+export interface QuizSubmitAnswer {
+  questionId: number;
+  selectedOptionIds: number[];
+}
+
+export interface QuizResultOption {
+  id: number;
+  optionText: string;
+  position: number;
+  selected: boolean;
+  isCorrect: boolean | null;
+}
+
+export interface QuizResultQuestion {
+  questionId: number;
+  questionText: string;
+  questionType: QuizQuestionType;
+  points: number;
+  pointsAwarded: number;
+  isCorrect: boolean;
+  explanation: string | null;
+  options: QuizResultOption[];
+}
+
+export interface QuizResult {
+  attemptId: number;
+  assignmentId: number;
+  status: QuizAttemptStatus;
+  score: number;
+  maxScore: number;
+  percent: number;
+  passed: boolean;
+  passPercent: number;
+  submittedAt: string | null;
+  showCorrectAnswers: boolean;
+  questions: QuizResultQuestion[];
+}
+
+export interface QuizAttemptDetail {
+  attempt: QuizAttemptBrief;
+  quiz: QuizStudentQuiz | null;
+  result: QuizResult | null;
+}
+
+export interface QuizHistoryItem {
+  attemptId: number;
+  attemptNumber: number;
+  status: QuizAttemptStatus;
+  score: number | null;
+  maxScore: number | null;
+  percent: number | null;
+  passed: boolean | null;
+  startedAt: string;
+  submittedAt: string | null;
+}
+
+export interface QuizAttemptHistory {
+  assignmentId: number;
+  title: string;
+  passPercent: number;
+  maxAttempts: number | null;
+  attemptsUsed: number;
+  attemptsLeft: number | null;
+  canStart: boolean;
+  passed: boolean;
+  bestScore: number | null;
+  bestMaxScore: number | null;
+  bestPercent: number | null;
+  inProgressId: number | null;
+  attempts: QuizHistoryItem[];
+}
+
+/* admin authoring */
+
+export interface AdminQuizOption {
+  id: number;
+  optionText: string;
+  isCorrect: boolean;
+  position: number;
+  isActive: boolean;
+}
+
+export interface AdminQuizQuestion {
+  id: number;
+  questionText: string;
+  questionType: QuizQuestionType;
+  points: number;
+  position: number;
+  explanation: string | null;
+  isActive: boolean;
+  wellFormed: boolean;
+  options: AdminQuizOption[];
+}
+
+export interface AdminQuizSettings {
+  passPercent: number;
+  maxAttempts: number | null;
+  showCorrectAnswers: boolean;
+  showExplanations: boolean;
+}
+
+export interface AdminQuiz {
+  assignmentId: number;
+  assignmentType: AssignmentType;
+  title: string;
+  settings: AdminQuizSettings;
+  questions: AdminQuizQuestion[];
+}
+
+export interface QuizDeleteResult {
+  deleted: boolean;
+  deactivated: boolean;
 }

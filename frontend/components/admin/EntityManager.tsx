@@ -41,6 +41,8 @@ interface Props<Row> {
   newLabel: string;
   onChanged?: () => void;
   extraAction?: { label: string; onClick: (row: Row) => void };
+  /** conditional per-row control rendered in the actions cell */
+  rowExtra?: (row: Row) => ReactNode;
 }
 
 type FormState = Record<string, string | boolean>;
@@ -57,6 +59,7 @@ export function EntityManager<Row>({
   newLabel,
   onChanged,
   extraAction,
+  rowExtra,
 }: Props<Row>) {
   const { t } = useLanguage();
   const a = t.admin;
@@ -259,6 +262,7 @@ export function EntityManager<Row>({
                     </td>
                   ))}
                   <td data-label={a.actions} className="admin-row-actions">
+                    {rowExtra?.(row)}
                     {extraAction && (
                       <button
                         type="button"

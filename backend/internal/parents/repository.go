@@ -233,11 +233,20 @@ func (r *Repository) ChildCourseDetail(ctx context.Context, childID, courseID in
 	subRows, err := r.pool.Query(ctx, `
 		SELECT
 			a.id, a.title, l.title, a.assignment_type, a.points,
-			s.status, s.score, s.teacher_feedback, s.submitted_at, s.checked_at
+			s.status, s.score, s.teacher_feedback, s.submitted_at, s.checked_at,
+			q.attempts, q.best_percent, q.passed
 		FROM assignments a
 		JOIN lessons l ON l.id = a.lesson_id
 		JOIN modules m ON m.id = l.module_id
 		LEFT JOIN submissions s ON s.assignment_id = a.id AND s.student_id = $1
+		LEFT JOIN LATERAL (
+			SELECT
+				count(*) FILTER (WHERE qa.status = 'submitted')          AS attempts,
+				max(qa.percent) FILTER (WHERE qa.status = 'submitted')   AS best_percent,
+				bool_or(qa.passed)                                       AS passed
+			FROM quiz_attempts qa
+			WHERE qa.assignment_id = a.id AND qa.student_id = $1
+		) q ON a.assignment_type = 'quiz'
 		WHERE m.course_id = $2 AND a.is_published = TRUE
 		ORDER BY m.position, l.position, a.position, a.id
 	`, childID, courseID)
@@ -252,6 +261,7 @@ func (r *Repository) ChildCourseDetail(ctx context.Context, childID, courseID in
 		if err := subRows.Scan(
 			&it.AssignmentID, &it.Title, &it.LessonTitle, &it.AssignmentType, &it.Points,
 			&status, &it.Score, &it.TeacherFeedback, &it.SubmittedAt, &it.CheckedAt,
+			&it.QuizAttempts, &it.QuizBestPercent, &it.QuizPassed,
 		); err != nil {
 			return ChildCourseDetail{}, fmt.Errorf("scan child assignment: %w", err)
 		}

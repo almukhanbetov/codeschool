@@ -19,9 +19,9 @@ Go Gin :8080  (modular monolith, no ORM)
 PostgreSQL 17 :5432 (container) / :5433 (host-mapped, see below)
 ```
 
-Auth, the **student learning flow** (enrol → progress → submit → complete), the **teacher flow** (groups → review queue → score + feedback → passed/failed → resubmit), and the **parent flow** (read-only view of linked children, their progress, assignments + teacher feedback, activity timeline) are all in place.
+Auth, the **student learning flow** (enrol → progress → submit → complete), the **teacher flow** (groups → review queue → score + feedback → passed/failed → resubmit), the **parent flow** (read-only view of linked children), and the **admin panel** (users, catalog, groups, parent-child links + audit log) are all in place.
 
-This stage adds the **admin panel**: a production-oriented back office for the whole LMS. An admin manages **users** (create/edit/deactivate/delete any role, reset passwords), **parent-child links**, the entire **catalog** (programs → levels → courses → modules → lessons → assignments, incl. publish toggles), and **groups** (create, assign a teacher, add/remove students). Every `/admin` route requires `role = admin`, and every mutation is written to a read-only **audit log**. See [What's not in this stage](#whats-not-in-this-stage).
+This stage adds the **quiz engine**. An admin authors a quiz on any `assignment_type = quiz`: pass-percent, max-attempts and answer-key visibility settings, plus `single_choice` / `multiple_choice` / `true_false` questions and their options. A student starts an attempt (options only — the correct answers are never sent to the browser), answers, and submits; the backend scores it, decides pass / fail against the threshold, and shows the result with a per-question review. Multiple attempts are kept as a history — quizzes never write a `submissions` row — and a lesson with a quiz can only be completed once the student has a **passing** attempt. Teachers and parents get a read-only roll-up (attempts, best %, passed). See [What's not in this stage](#whats-not-in-this-stage).
 
 ## Project structure
 
@@ -92,7 +92,7 @@ Open http://localhost:3000.
 
 ## Seeds
 
-`backend/seeds/dev_seed.sql` is plain SQL, run manually, never automatically — see `backend/README.md`. It creates one program ("Computer Science Kids"), one level, and 6 courses reusing the names/ages already present in `frontend/data/*.ts` where they overlapped (Scratch Junior, Python Start, Robotics Arduino, AI Junior — plus "Основы алгоритмов" and "Web Development" per this stage's spec), with 4 modules and 5 lessons under "Python Start".
+`backend/seeds/dev_seed.sql` is plain SQL, run manually, never automatically — see `backend/README.md`. It creates one program ("Computer Science Kids"), one level, and 6 courses reusing the names/ages already present in `frontend/data/*.ts` where they overlapped (Scratch Junior, Python Start, Robotics Arduino, AI Junior — plus "Основы алгоритмов" and "Web Development"), with 4 modules and 5 lessons under "Python Start", one text/code assignment each on three lessons, and a fully-authored **quiz** ("Тест: Циклы Python", 5 questions, pass 70 %) on the "Цикл for" lesson.
 
 ## API
 
@@ -161,6 +161,20 @@ GET|POST /api/v1/admin/groups                         ?teacherId=&courseId=&stat
 GET|PATCH|DELETE /api/v1/admin/groups/:id
 GET|POST /api/v1/admin/groups/:id/students
 DELETE /api/v1/admin/groups/:id/students/:studentId
+
+# quiz engine — student (auth + role=student, enrolled)
+POST   /api/v1/assignments/:id/quiz/attempts          start / resume an attempt
+GET    /api/v1/assignments/:id/quiz/attempts          attempt history + roll-up
+POST   /api/v1/quiz/attempts/:id/submit               {answers:[{questionId, selectedOptionIds}]}
+GET    /api/v1/quiz/attempts/:id                      own attempt (resumable / graded)
+# quiz engine — teacher (read-only) / admin (authoring, audited)
+GET    /api/v1/teacher/quiz/attempts/:id
+GET    /api/v1/admin/assignments/:id/quiz
+PUT    /api/v1/admin/assignments/:id/quiz/settings
+POST   /api/v1/admin/assignments/:id/quiz/questions
+PATCH|DELETE /api/v1/admin/quiz/questions/:id
+POST   /api/v1/admin/quiz/questions/:id/options
+PATCH|DELETE /api/v1/admin/quiz/options/:id
 ```
 
 ## Frontend ↔ backend integration
@@ -219,10 +233,20 @@ DELETE /api/v1/admin/groups/:id/students/:studentId
 - **`/admin/audit`** — read-only paginated log of every admin action.
 - All `/admin/*` routes wrapped in `RequireAuth roles={["admin"]}`. New strings live under `data/translations.ts` → `admin`, RU + KZ + EN. Existing table/form/dialog tokens are reused; only a small `.admin-*` block was added to `globals.css`. No existing design was changed.
 
+## Quiz engine on the frontend
+
+- `lib/api.ts` gains student quiz calls (`startQuizAttempt`, `getQuizAttempts`, `submitQuizAttempt`, `getQuizAttempt`) and `adminApi.quiz` (settings + question/option authoring) — same browser client + 401-refresh-retry.
+- **Student** — `AssignmentPanel` renders a quiz assignment as a summary card (best %, attempts, pass threshold) with a **Start / Continue / Retake** button instead of a textarea. The quiz itself lives at `/learn/[courseId]/lesson/[lessonId]/quiz/[assignmentId]` (`QuizRunner`): one question per screen, radio for single-choice / checkboxes for multiple-choice, Back / Next / Finish, then a pass/fail result with a per-question answer review (correct answers + explanations shown only when the settings allow) and a **Try again** CTA while attempts remain. Answers are held in React state and sent only on submit (no autosave).
+- **Admin** — the catalog's assignment table shows a **Configure quiz** action on `quiz` rows, opening a dialog (`AdminQuizEditor`): settings form + questions list with inline option editing and a "misconfigured" warning per question. `single_choice` / `true_false` reject a second correct option in both the UI and the API.
+- **Teacher** — the student-detail page gains a read-only **Quiz results** table (best %, attempts, passed). **Parent** — the child's course page shows the same roll-up for quiz assignments.
+- New strings live under `data/translations.ts` → `quiz` (student/teacher-facing) and `admin` (authoring), RU + KZ + EN. Only a `.quiz-*` block was added to `globals.css`; existing tokens/components are reused. Dark/Light unchanged.
+
 Frontend route guards are a **UX** boundary; the backend authorization on every protected API call is the real security boundary.
 
 **Security trade-off note:** the refresh token is an HttpOnly, `SameSite=Lax` cookie scoped to `/api/v1/auth` (never in `localStorage`, never in a response body), and the access token is memory-only — so neither is readable by page JavaScript (XSS can't exfiltrate them). `Secure` is off in local development (plain HTTP) and on in production. Because the cookie lives on the API origin, Next.js middleware/`proxy` can't read it, so route protection is client-side only (see above).
 
 ## What's not in this stage
 
-Quiz engine, code execution / sandboxing, AI review, certificates, payments, notifications, file storage (MinIO). Student code is stored, never run. **One current submission** per assignment: a resubmission overwrites it and clears the prior review — no per-attempt history. A `failed` verdict does not roll back a completed lesson (the UI flags "needs revision"). The parent flow is read-only (last 25 activity events, no pagination). The admin panel: hard deletes only (cascading, no undo), no bulk import, no per-field audit diff, and it edits DB content directly — course/lesson text is still not per-language. Refresh-token cleanup scheduling and login rate limiting remain future hardening. Deferred to later stages — see `backend/README.md`'s own scope note.
+Code execution / sandboxing (Monaco, code runner — the **next** stage), AI review, certificates, payments, notifications, file storage (MinIO), analytics. Student code is stored, never run. Written submissions keep **one current row** per assignment; quizzes keep a full attempt history. A `failed` verdict does not roll back a completed lesson. The parent flow is read-only. The admin panel: hard deletes only for catalog/user rows (cascading, no undo), no bulk import, no per-field audit diff; catalog text is still not per-language.
+
+**Quiz limitations.** No code quiz, no free-text auto-grading, no question snapshots (editing a question changes how past attempts render), no shuffle, no partial credit, no timed quizzes, no question bank, no random quiz generation. A question/option that already appears in a submitted attempt is deactivated instead of hard-deleted, but its text stays editable. Refresh-token cleanup and login rate limiting remain future hardening. Deferred to later stages — see `backend/README.md`'s own scope note.

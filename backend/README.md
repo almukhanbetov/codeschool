@@ -1,8 +1,8 @@
 # CODESCHOOL Backend
 
-Go + Gin + pgx/v5 (`pgxpool`) REST API over PostgreSQL 17. No ORM — plain, parameterized SQL. Modular monolith: one binary, one domain package per resource (`programs`, `levels`, `courses`, `modules`, `lessons`, `users`, `auth`, `enrollments`, `assignments`, `progress`, `submissions`, `groups`, `parents`, `admin`).
+Go + Gin + pgx/v5 (`pgxpool`) REST API over PostgreSQL 17. No ORM — plain, parameterized SQL. Modular monolith: one binary, one domain package per resource (`programs`, `levels`, `courses`, `modules`, `lessons`, `users`, `auth`, `enrollments`, `assignments`, `progress`, `submissions`, `groups`, `parents`, `admin`, `quizzes`).
 
-On top of the catalog + auth + student + teacher + parent flows, this stage adds the **admin panel API** (`internal/admin`, all routes `role = admin`): full CRUD over users (any role), parent-child links, the whole catalog (programs → levels → courses → modules → lessons → assignments), and groups (+ teacher assignment + membership), plus a read-only **audit log** — every admin mutation is recorded. The admin repository sees *unpublished* rows too (unlike the public catalog repos). See the root README.
+On top of the catalog + auth + student + teacher + parent + admin flows, this stage adds the **quiz engine** (`internal/quizzes`): admin authoring of quiz settings / questions / options, student attempts with server-side automatic scoring (pass / fail against a configurable threshold), attempt history, and read-only teacher / parent views. Quiz assignments never touch the `submissions` table — their state lives in `quiz_attempts` — and a lesson with a quiz can only be completed once the student passes it. The earlier **admin panel API** (`internal/admin`, all routes `role = admin`) covers full CRUD over users, parent-child links, the catalog, and groups, plus a read-only **audit log**. See the root README.
 
 ## Architecture
 
@@ -83,7 +83,17 @@ Admin-flow table (`00016`):
 
 | Table | Key rules |
 | --- | --- |
-| `admin_audit_log` (`00016`) | `admin_id → users`, `action ∈ (create, update, delete)`, `entity`, `entity_id`, `summary`. One row per admin mutation, written best-effort (a failed audit write never fails the operation it describes). Read-only via `GET /admin/audit`. |
+| `admin_audit_log` (`00016`) | `admin_id → users`, `action ∈ (create, update, delete)`, `entity`, `entity_id`, `summary`. One row per admin mutation, written best-effort (a failed audit write never fails the operation it describes). Read-only via `GET /admin/audit`. Quiz authoring mutations write here too (`entity` = `quiz_settings` / `quiz_question` / `quiz_option`). |
+
+Quiz-engine tables (`00017`–`00021`, `internal/quizzes`):
+
+| Table | Key rules |
+| --- | --- |
+| `quiz_questions` (`00017`) | `assignment_id → assignments ON DELETE CASCADE`; `question_type ∈ (single_choice, multiple_choice, true_false)`; `points ≥ 1`; `is_active` (soft-hide). Questions only make sense for an `assignment_type = quiz` — the service rejects creating one on a `text`/`code`/`project` assignment (spec §5). |
+| `quiz_options` (`00018`) | `question_id → quiz_questions ON DELETE CASCADE`; `is_correct`; `is_active`. Student-facing API **never** returns `is_correct` before an attempt is submitted (spec §7). |
+| `quiz_attempts` (`00019`) | `assignment_id → assignments`, `student_id → users`; `status ∈ (in_progress, submitted)`; `score`/`max_score`/`percent`/`passed` filled on submit. **No uniqueness on (student, assignment)** — a student keeps a full attempt history (spec §13). Quiz assignments never create a `submissions` row (spec §46). |
+| `quiz_settings` (`00020`) | `assignment_id` PK `→ assignments ON DELETE CASCADE`; `pass_percent` 0–100 (default 70); `max_attempts` NULL = unlimited; `show_correct_answers`, `show_explanations`. `PUT` replaces the whole row. |
+| `quiz_attempt_answers` (`00021`) | `UNIQUE (attempt_id, question_id)`; per-question `is_correct` + `points_awarded` (server-computed). Selected options live in `quiz_attempt_answer_options` (composite PK) so `multiple_choice` works. |
 
 ## Seed data (development only)
 
@@ -208,6 +218,32 @@ Base path: `/api/v1`. Every success response is `{"data": ...}`; every error is 
 
 **Semantics.** `PATCH` bodies are sparse — only the fields present are changed (an empty string clears a nullable text column). Deletes rely on the schema's `ON DELETE CASCADE` (dropping a program removes its whole subtree; dropping a user removes their enrollments / submissions / memberships / links / owned groups). Guards: an admin cannot delete or deactivate **their own** account, and the **last active admin** cannot be removed or demoted. Adding a student to a group reuses the teacher-stage transaction (membership + guaranteed active enrollment, `max_students` enforced). Duplicate slug / email / phone → `409`; a bad foreign key or enum → `400`. Every successful mutation writes one `admin_audit_log` row.
 
+### Quiz engine (`internal/quizzes`)
+
+**Student** (auth + role `student`, enrolled in the course):
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| POST | `/api/v1/assignments/:id/quiz/attempts` | Start (or resume an open) attempt. Returns `{attempt, quiz:{questions:[{options}]}}` — **no `isCorrect`, no `explanation`**. `409` if `max_attempts` reached / quiz has no questions / quiz misconfigured. |
+| GET | `/api/v1/assignments/:id/quiz/attempts` | Attempt history + roll-up (`bestPercent`, `attemptsUsed`, `attemptsLeft`, `passed`, `canStart`). |
+| POST | `/api/v1/quiz/attempts/:id/submit` | `{answers:[{questionId, selectedOptionIds}]}`. Own attempt only (`403`); double-submit → `409`; a foreign question/option → `400`. Scored **server-side** in one transaction; strict match for `multiple_choice` (no partial credit). Returns the graded result (correct options + explanations only if the settings allow). |
+| GET | `/api/v1/quiz/attempts/:id` | Own attempt — resumable quiz while `in_progress`, graded result once `submitted`. |
+
+**Teacher** (auth + role `teacher`): `GET /api/v1/teacher/quiz/attempts/:id` — read-only, only for a student who shares one of the teacher's groups for that course. Teacher student-detail (`/teacher/groups/:id/students/:studentId`) also carries a `quizResults[]` roll-up.
+
+**Admin** (auth + role `admin`, all audited):
+
+| Method | Path |
+| --- | --- |
+| GET | `/api/v1/admin/assignments/:id/quiz` |
+| PUT | `/api/v1/admin/assignments/:id/quiz/settings` |
+| POST | `/api/v1/admin/assignments/:id/quiz/questions` (optional inline `options[]`) |
+| PATCH / DELETE | `/api/v1/admin/quiz/questions/:id` |
+| POST | `/api/v1/admin/quiz/questions/:id/options` |
+| PATCH / DELETE | `/api/v1/admin/quiz/options/:id` |
+
+Authoring guards: questions only on `assignment_type = quiz`; `single_choice` / `true_false` reject a second correct option; `true_false` capped at two options; `pass_percent` 0–100. **History safety** — deleting a question/option that already appears in a submitted attempt *deactivates* it (`is_active = false`) instead of hard-deleting; unreferenced rows are hard-deleted. Progress: a lesson with a quiz assignment can only be completed once the student has a **passing** attempt (spec §45).
+
 ### Auth model
 
 - **Access token** — signed JWT (HS256), `sub` = user id, `role`, `iat`, `exp`; 15-min TTL. Sent as `Authorization: Bearer <token>`. Never carries the password hash.
@@ -253,11 +289,13 @@ go build ./cmd/api
 
 The `auth` suite additionally covers password hashing, JWT sign/verify/expiry, register validation (duplicate email/phone, `admin` rejected, short password), login (wrong password, no user enumeration, inactive rejected), refresh rotation + reuse/revoked/expired rejection, logout idempotency, and the JWT/role middleware (expired token, inactive user, student → `/admin/ping` = 403).
 
-Five integration tests run against a real Postgres — skipped unless `TEST_DATABASE_URL` is set. Each inserts and cleans up its own throwaway fixtures and does not touch seed data:
+The `quizzes` package adds pure **scoring** tests (`single_choice` / `true_false` / strict `multiple_choice` — exact match only, no partial credit; totals; percent incl. divide-by-zero; pass threshold) and a `progress` test that a failed quiz blocks lesson completion while a passing one allows it.
+
+Six integration tests run against a real Postgres — skipped unless `TEST_DATABASE_URL` is set. Each inserts and cleans up its own throwaway fixtures and does not touch seed data:
 
 ```bash
 TEST_DATABASE_URL=postgres://codeschool:codeschool@localhost:5432/codeschool?sslmode=disable \
-  go test ./internal/courses/... ./internal/progress/... ./internal/groups/... ./internal/parents/... ./internal/admin/... -run "Repository|FullFlow" -v
+  go test ./internal/courses/... ./internal/progress/... ./internal/groups/... ./internal/parents/... ./internal/admin/... ./internal/quizzes/... -run "Repository|FullFlow" -v
 ```
 
 - `courses` — the *published-only* filter on `GET /courses`.
@@ -265,6 +303,7 @@ TEST_DATABASE_URL=postgres://codeschool:codeschool@localhost:5432/codeschool?ssl
 - `groups` — `AddStudentTx` (creates the enrollment, enforces `max_students`, blocks duplicates, rejects non-students) and the ownership joins (teacher A ≠ teacher B for groups, students, and submissions).
 - `parents` — `IsLinked` gate (parent A ≠ parent B), the `ListChildren` roll-up aggregates, `ChildCourseDetail` surfacing the teacher's `score`/`feedback`, `ErrCourseNotFound` for an un-enrolled course, and the newest-first activity timeline.
 - `admin` — the full program → assignment CRUD chain, duplicate-slug / bad-FK / bad-enum rejection, role-checked parent links + group teacher assignment, group membership (+ auto-enrollment, `max_students`), the self / last-admin guards, audit rows written, and `ON DELETE CASCADE` on a program drop.
+- `quizzes` — authoring (question on a non-quiz rejected, bad `pass_percent`, second correct option on `single_choice` rejected, audit rows), the attempt flow (non-enrolled / non-quiz blocked, resume returns the same attempt, foreign question/option rejected, `single_choice` needs exactly one selection, another student's attempt / double-submit rejected), fail-then-pass scoring across two attempts, the progress `CountPassedAssignments` gate, and question-with-history deactivating instead of deleting.
 
 ## Logging & shutdown
 
@@ -272,4 +311,6 @@ Startup logs `database connected` and `server listening on :PORT` — never secr
 
 ## Not in this stage
 
-Quiz engine, code execution / sandboxing, AI review, certificates, payments, notifications — see the root README. Student code is **stored only**, never executed. Submissions keep **one current row** per (student, assignment) — a resubmission overwrites it and clears the prior review; per-attempt history is future work. If a lesson was completed and the teacher later marks its assignment `failed`, the lesson progress is **not** rolled back (the UI shows "needs revision" instead) — a stricter mastery workflow is future work. The parent flow is read-only (last 25 activity events, no pagination). The admin panel has no bulk import, no soft-delete / undo (deletes are hard + cascading), and no per-field audit diff (the audit log records action + entity + a short summary). Refresh-token cleanup and login rate limiting remain noted as future hardening.
+Code execution / sandboxing (Monaco, code runner), AI review, certificates, payments, notifications, analytics — see the root README. Student code is **stored only**, never executed. Written submissions keep **one current row** per (student, assignment); quizzes keep a full attempt history in `quiz_attempts`. If a lesson was completed and the teacher later marks its assignment `failed`, the lesson progress is **not** rolled back — a stricter mastery workflow is future work. The parent flow is read-only. The admin panel has no bulk import, no soft-delete / undo for catalog/user rows, and no per-field audit diff.
+
+**Quiz limitations.** No code-quiz or free-text auto-grading, no question snapshots (editing a question's text changes how old attempts render — an accepted limitation), no shuffle of questions/options, no partial credit, no timed quizzes, no question bank, no random quiz generation. Referenced questions/options are never hard-deleted (they deactivate) but their text is still mutable. Refresh-token cleanup and login rate limiting remain noted as future hardening.

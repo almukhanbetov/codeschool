@@ -1,13 +1,159 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/Button";
 import { SubmissionBadge } from "@/components/ui/SubmissionBadge";
-import { ApiError, saveSubmissionDraft, submitAssignment } from "@/lib/api";
-import type { Assignment, Submission } from "@/types";
+import {
+  ApiError,
+  getQuizAttempts,
+  saveSubmissionDraft,
+  submitAssignment,
+} from "@/lib/api";
+import type { Assignment, QuizAttemptHistory, Submission } from "@/types";
 
 export function AssignmentPanel({
+  assignment,
+  courseId,
+  initialSubmission,
+  onSubmittedChange,
+}: {
+  assignment: Assignment;
+  courseId: number;
+  initialSubmission: Submission | null;
+  onSubmittedChange: (submitted: boolean) => void;
+}) {
+  if (assignment.assignmentType === "quiz") {
+    return (
+      <QuizAssignmentPanel
+        assignment={assignment}
+        courseId={courseId}
+        onSubmittedChange={onSubmittedChange}
+      />
+    );
+  }
+  return (
+    <WrittenAssignmentPanel
+      assignment={assignment}
+      initialSubmission={initialSubmission}
+      onSubmittedChange={onSubmittedChange}
+    />
+  );
+}
+
+/* ================= quiz ================= */
+
+function QuizAssignmentPanel({
+  assignment,
+  courseId,
+  onSubmittedChange,
+}: {
+  assignment: Assignment;
+  courseId: number;
+  onSubmittedChange: (submitted: boolean) => void;
+}) {
+  const { t } = useLanguage();
+  const q = t.quiz;
+  const [history, setHistory] = useState<QuizAttemptHistory | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const notify = useRef(onSubmittedChange);
+  useEffect(() => {
+    notify.current = onSubmittedChange;
+  });
+
+  const load = useCallback(async () => {
+    try {
+      const h = await getQuizAttempts(assignment.id);
+      setHistory(h);
+      notify.current(h.passed);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : q.loadError);
+    }
+  }, [assignment.id, q.loadError]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
+
+  const quizHref = `/learn/${courseId}/lesson/${assignment.lessonId}/quiz/${assignment.id}`;
+  const hasAttempts = (history?.attempts.length ?? 0) > 0;
+  const label = history?.inProgressId
+    ? q.continueQuiz
+    : hasAttempts
+      ? q.retakeQuiz
+      : q.startQuiz;
+  const canStart = history?.canStart ?? true;
+
+  return (
+    <div className="assignment-panel">
+      <div className="assignment-head">
+        <h3>{assignment.title}</h3>
+        {history?.passed && <span className="quiz-badge quiz-badge-pass">✓ {q.passed}</span>}
+      </div>
+      {assignment.description && <p className="assignment-desc">{assignment.description}</p>}
+
+      {history && (
+        <div className="quiz-summary">
+          <span>
+            {q.passThreshold}: {history.passPercent}%
+          </span>
+          {history.bestPercent != null && (
+            <span>
+              {q.bestResult}: {history.bestScore}/{history.bestMaxScore} ({history.bestPercent}%)
+            </span>
+          )}
+          <span>
+            {q.attempts}: {history.attemptsUsed}
+            {history.maxAttempts != null ? ` / ${history.maxAttempts}` : ""}
+          </span>
+        </div>
+      )}
+
+      {error && (
+        <p className="auth-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {canStart ? (
+        <div className="assignment-actions">
+          <Button href={quizHref} variant="primary" size="sm">
+            {label}
+          </Button>
+        </div>
+      ) : (
+        <p className="assignment-hint">{q.noAttemptsLeft}</p>
+      )}
+
+      {hasAttempts && (
+        <ul className="quiz-history">
+          {history!.attempts
+            .filter((a) => a.status === "submitted")
+            .map((a) => (
+              <li key={a.attemptId}>
+                <Link href={`/learn/${courseId}/lesson/${assignment.lessonId}/quiz/${assignment.id}`}>
+                  {q.attemptNumber} {a.attemptNumber}
+                </Link>
+                <span>
+                  {a.score}/{a.maxScore} · {a.percent}%
+                </span>
+                <span className={a.passed ? "quiz-mark-ok" : "quiz-mark-bad"}>
+                  {a.passed ? q.passed : q.failed}
+                </span>
+              </li>
+            ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ================= text / code / project ================= */
+
+function WrittenAssignmentPanel({
   assignment,
   initialSubmission,
   onSubmittedChange,
@@ -30,8 +176,6 @@ export function AssignmentPanel({
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Editable while there is no submission, or it is a draft, or the teacher
-  // sent it back (failed → the student revises and resubmits).
   const editable =
     submission == null || submission.status === "draft" || submission.status === "failed";
   const isFailed = submission?.status === "failed";
@@ -89,7 +233,6 @@ export function AssignmentPanel({
         </p>
       )}
 
-      {/* Teacher verdict, when reviewed */}
       {(isPassed || isFailed) && (
         <div className={`review-result ${isPassed ? "review-result-passed" : "review-result-failed"}`}>
           <p className="review-result-head">

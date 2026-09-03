@@ -27,6 +27,7 @@ import (
 	"codeschool/backend/internal/parents"
 	"codeschool/backend/internal/programs"
 	"codeschool/backend/internal/progress"
+	"codeschool/backend/internal/quizzes"
 	"codeschool/backend/internal/submissions"
 	"codeschool/backend/internal/users"
 )
@@ -110,10 +111,17 @@ func run() error {
 	submissionsService := submissions.NewService(submissionsRepo, assignmentsService, enrollmentsService)
 	submissionsHandler := submissions.NewHandler(submissionsService)
 
+	// Quiz engine: authoring (admin) + attempts/scoring (student) + read views.
+	quizzesRepo := quizzes.NewRepository(pool)
+	quizzesService := quizzes.NewService(quizzesRepo, enrollmentsService)
+	quizzesAdminService := quizzes.NewAdminService(quizzesRepo)
+	quizzesHandler := quizzes.NewHandler(quizzesService)
+	quizzesAdminHandler := quizzes.NewAdminHandler(quizzesAdminService)
+
 	progressRepo := progress.NewRepository(pool)
 	progressService := progress.NewService(
 		progressRepo, lessonsService, enrollmentsService, enrollmentsService,
-		assignmentsService, submissionsService,
+		assignmentsService, submissionsService, quizzesService,
 	)
 	progressHandler := progress.NewHandler(progressService)
 
@@ -155,11 +163,13 @@ func run() error {
 	assignments.RegisterRoutes(student, assignmentsHandler)
 	submissions.RegisterRoutes(student, submissionsHandler)
 	progress.RegisterRoutes(student, progressHandler)
+	quizzes.RegisterStudentRoutes(student, quizzesHandler)
 
 	// Teacher-only endpoints — valid access token + role == "teacher".
 	teacher := protected.Group("")
 	teacher.Use(auth.RequireRole("teacher"))
 	groups.RegisterRoutes(teacher, groupsHandler)
+	quizzes.RegisterTeacherRoutes(teacher, quizzesHandler)
 
 	// Parent-only endpoints — valid access token + role == "parent". Every
 	// route is read-only (GET).
@@ -171,6 +181,7 @@ func run() error {
 	adminGroup := protected.Group("")
 	adminGroup.Use(auth.RequireRole("admin"))
 	admin.RegisterRoutes(adminGroup, adminHandler)
+	quizzes.RegisterAdminRoutes(adminGroup, quizzesAdminHandler)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

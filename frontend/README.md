@@ -141,6 +141,15 @@ One necessary substitution: `lucide-react` no longer ships branded logo icons (I
 - **`/admin`**, **`/admin/users`**, **`/admin/catalog`**, **`/admin/groups`**, **`/admin/links`**, **`/admin/audit`** — each `RequireAuth roles={["admin"]}` + `AdminShell`.
 - New strings live under `data/translations.ts` → `admin`, RU + KZ + EN. Only a `.admin-*` block was appended to `globals.css`; existing `.teacher-table` / `.btn` / form tokens are reused. No existing page or component was restyled.
 
+## Quiz engine
+
+- **`lib/api.ts`** — student calls `startQuizAttempt` / `getQuizAttempts` / `submitQuizAttempt` / `getQuizAttempt` (+ `getTeacherQuizAttempt`), and `adminApi.quiz` (`get`, `updateSettings`, `create/update/deleteQuestion`, `create/update/deleteOption`). Same browser client + 401-refresh-retry — no second fetch layer.
+- **`components/learn/QuizRunner.tsx`** + route **`/learn/[courseId]/lesson/[lessonId]/quiz/[assignmentId]`** — one question per screen (radio for single-choice / true-false, checkboxes for multiple-choice), Back / Next / Finish, then a pass/fail banner + a per-question review (your answer vs. correct answer + explanation, both gated by the quiz settings) and a **Try again** CTA while attempts remain. Answers live in React state, sent only on submit.
+- **`components/learn/AssignmentPanel.tsx`** — a `quiz` assignment now renders a summary card (best %, attempts, pass threshold, "passed" badge) with a **Start / Continue / Retake** link instead of a textarea; it reports the pass state up so the lesson-completion gate reflects it.
+- **`components/admin/AdminQuizEditor.tsx`** — a dialog opened from the catalog's assignment table (**Configure quiz** on `quiz` rows, via `EntityManager`'s new `rowExtra` prop): settings form + questions list with inline option toggles, a per-question "misconfigured" warning, and single-choice / true-false correct-option limits enforced client-side too.
+- **Teacher** `TeacherStudentDetail` gains a read-only **Quiz results** table; **Parent** `ParentChildCourse` shows the same roll-up for quiz assignments.
+- New strings: `data/translations.ts` → `quiz` (learner-facing) and additions to `admin` / `teach`, RU + KZ + EN. Only a `.quiz-*` block was appended to `globals.css`. Dark/Light and the design system are untouched.
+
 ## Placeholder routes
 
 `/courses` uses the same `.placeholder-*` visual language as the rest of the site.

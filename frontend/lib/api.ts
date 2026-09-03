@@ -51,6 +51,16 @@ import type {
   AdminGroup,
   AdminGroupStudent,
   AdminAuditRow,
+  QuizStartResponse,
+  QuizResult,
+  QuizAttemptDetail,
+  QuizAttemptHistory,
+  QuizSubmitAnswer,
+  AdminQuiz,
+  AdminQuizSettings,
+  AdminQuizQuestion,
+  AdminQuizOption,
+  QuizDeleteResult,
 } from "@/types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
@@ -331,6 +341,43 @@ export function submitAssignment(assignmentId: number): Promise<Submission> {
 }
 
 /* =========================================================
+   Quiz engine — student side. Scoring is entirely server-side;
+   the client never sends or trusts a score.
+   ========================================================= */
+
+export function startQuizAttempt(assignmentId: number): Promise<QuizStartResponse> {
+  return browserFetch<QuizStartResponse>(`/assignments/${assignmentId}/quiz/attempts`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export function getQuizAttempts(assignmentId: number): Promise<QuizAttemptHistory> {
+  return browserFetch<QuizAttemptHistory>(`/assignments/${assignmentId}/quiz/attempts`, {
+    auth: true,
+  });
+}
+
+export function submitQuizAttempt(
+  attemptId: number,
+  answers: QuizSubmitAnswer[]
+): Promise<QuizResult> {
+  return browserFetch<QuizResult>(`/quiz/attempts/${attemptId}/submit`, {
+    method: "POST",
+    body: JSON.stringify({ answers }),
+    auth: true,
+  });
+}
+
+export function getQuizAttempt(attemptId: number): Promise<QuizAttemptDetail> {
+  return browserFetch<QuizAttemptDetail>(`/quiz/attempts/${attemptId}`, { auth: true });
+}
+
+export function getTeacherQuizAttempt(attemptId: number): Promise<QuizResult> {
+  return browserFetch<QuizResult>(`/teacher/quiz/attempts/${attemptId}`, { auth: true });
+}
+
+/* =========================================================
    Teacher flow — all browser-side, all require a teacher token.
    ========================================================= */
 
@@ -553,6 +600,52 @@ export const adminApi = {
       }),
     remove: (groupId: number, studentId: number) =>
       browserFetch<unknown>(`/admin/groups/${groupId}/students/${studentId}`, {
+        method: "DELETE",
+        auth: true,
+      }),
+  },
+
+  // Quiz authoring. Every call here is audited server-side.
+  quiz: {
+    get: (assignmentId: number) =>
+      browserFetch<AdminQuiz>(`/admin/assignments/${assignmentId}/quiz`, { auth: true }),
+    updateSettings: (assignmentId: number, body: AdminQuizSettings) =>
+      browserFetch<AdminQuizSettings>(`/admin/assignments/${assignmentId}/quiz/settings`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+        auth: true,
+      }),
+    createQuestion: (assignmentId: number, body: unknown) =>
+      browserFetch<AdminQuizQuestion>(`/admin/assignments/${assignmentId}/quiz/questions`, {
+        method: "POST",
+        body: JSON.stringify(body),
+        auth: true,
+      }),
+    updateQuestion: (questionId: number, body: unknown) =>
+      browserFetch<AdminQuizQuestion>(`/admin/quiz/questions/${questionId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+        auth: true,
+      }),
+    deleteQuestion: (questionId: number) =>
+      browserFetch<QuizDeleteResult>(`/admin/quiz/questions/${questionId}`, {
+        method: "DELETE",
+        auth: true,
+      }),
+    createOption: (questionId: number, body: unknown) =>
+      browserFetch<AdminQuizOption>(`/admin/quiz/questions/${questionId}/options`, {
+        method: "POST",
+        body: JSON.stringify(body),
+        auth: true,
+      }),
+    updateOption: (optionId: number, body: unknown) =>
+      browserFetch<AdminQuizOption>(`/admin/quiz/options/${optionId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+        auth: true,
+      }),
+    deleteOption: (optionId: number) =>
+      browserFetch<QuizDeleteResult>(`/admin/quiz/options/${optionId}`, {
         method: "DELETE",
         auth: true,
       }),

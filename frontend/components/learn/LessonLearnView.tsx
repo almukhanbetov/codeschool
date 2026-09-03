@@ -68,8 +68,12 @@ export function LessonLearnView({
         setState({ kind: "notFound" });
         return;
       }
+      // Quiz assignments have no submissions row (their state lives in
+      // quiz_attempts) — the AssignmentPanel loads that itself.
       const submissionEntries = await Promise.all(
-        assignments.map(async (a) => [a.id, await getMySubmission(a.id)] as const)
+        assignments.map(async (a) =>
+          [a.id, a.assignmentType === "quiz" ? null : await getMySubmission(a.id)] as const
+        )
       );
       const submissions = new Map(submissionEntries);
 
@@ -112,6 +116,7 @@ export function LessonLearnView({
 
   const markSubmitted = useCallback((assignmentId: number, submitted: boolean) => {
     setSubmittedIds((prev) => {
+      if (submitted === prev.has(assignmentId)) return prev; // no-op keeps the ref stable
       const next = new Set(prev);
       if (submitted) next.add(assignmentId);
       else next.delete(assignmentId);
@@ -246,6 +251,7 @@ export function LessonLearnView({
                   <AssignmentPanel
                     key={a.id}
                     assignment={a}
+                    courseId={courseId}
                     initialSubmission={submissions.get(a.id) ?? null}
                     onSubmittedChange={(sub) => markSubmitted(a.id, sub)}
                   />

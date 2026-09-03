@@ -71,7 +71,33 @@ func (f *fakeSubs) CountNonDraftForAssignments(_ context.Context, s int64, ids [
 	return n, nil
 }
 
-func build() (*Service, *fakeRepo, *fakeEnroll, *fakeAssignments, *fakeSubs) {
+// fakeQuizzes: quizIDs marks which assignment ids are quizzes; passed marks
+// which of those the student has passed.
+type fakeQuizzes struct {
+	quizIDs map[int64]bool
+	passed  map[int64]bool
+}
+
+func (f *fakeQuizzes) QuizAssignmentIDs(_ context.Context, ids []int64) ([]int64, error) {
+	var out []int64
+	for _, id := range ids {
+		if f.quizIDs[id] {
+			out = append(out, id)
+		}
+	}
+	return out, nil
+}
+func (f *fakeQuizzes) CountPassedForAssignments(_ context.Context, s int64, ids []int64) (int, error) {
+	n := 0
+	for _, id := range ids {
+		if f.passed[id] {
+			n++
+		}
+	}
+	return n, nil
+}
+
+func build() (*Service, *fakeRepo, *fakeEnroll, *fakeAssignments, *fakeSubs, *fakeQuizzes) {
 	repo := &fakeRepo{started: map[[2]int64]bool{}, completed: map[[2]int64]bool{}}
 	en := &fakeEnroll{
 		enrolled: map[[2]int64]bool{{5, 3}: true},
@@ -79,12 +105,13 @@ func build() (*Service, *fakeRepo, *fakeEnroll, *fakeAssignments, *fakeSubs) {
 	}
 	as := &fakeAssignments{ids: map[int64][]int64{}}
 	su := &fakeSubs{nonDraft: map[int64]int{}}
-	svc := NewService(repo, &fakeLessons{m: map[int64]int64{7: 3}}, en, en, as, su)
-	return svc, repo, en, as, su
+	qz := &fakeQuizzes{quizIDs: map[int64]bool{}, passed: map[int64]bool{}}
+	svc := NewService(repo, &fakeLessons{m: map[int64]int64{7: 3}}, en, en, as, su, qz)
+	return svc, repo, en, as, su, qz
 }
 
 func TestStartLesson_RequiresEnrollment(t *testing.T) {
-	svc, _, en, _, _ := build()
+	svc, _, en, _, _, _ := build()
 	en.enrolled = map[[2]int64]bool{}
 	if _, err := svc.StartLesson(context.Background(), 5, 7); !errors.Is(err, ErrNotEnrolled) {
 		t.Fatalf("want ErrNotEnrolled, got %v", err)
@@ -92,7 +119,7 @@ func TestStartLesson_RequiresEnrollment(t *testing.T) {
 }
 
 func TestStartLesson_Success(t *testing.T) {
-	svc, repo, _, _, _ := build()
+	svc, repo, _, _, _, _ := build()
 	if _, err := svc.StartLesson(context.Background(), 5, 7); err != nil {
 		t.Fatal(err)
 	}
@@ -102,14 +129,14 @@ func TestStartLesson_Success(t *testing.T) {
 }
 
 func TestStartLesson_UnknownLesson(t *testing.T) {
-	svc, _, _, _, _ := build()
+	svc, _, _, _, _, _ := build()
 	if _, err := svc.StartLesson(context.Background(), 5, 999); !errors.Is(err, ErrLessonNotFound) {
 		t.Fatalf("want ErrLessonNotFound, got %v", err)
 	}
 }
 
 func TestCompleteLesson_GatedByAssignmentSubmission(t *testing.T) {
-	svc, repo, _, as, su := build()
+	svc, repo, _, as, su, _ := build()
 	as.ids[7] = []int64{10} // lesson 7 has a published assignment
 	repo.result = CompleteResult{Course: CourseCounts{CourseID: 3, TotalLessons: 2, CompletedLessons: 1}}
 
@@ -128,8 +155,29 @@ func TestCompleteLesson_GatedByAssignmentSubmission(t *testing.T) {
 	}
 }
 
+func TestCompleteLesson_GatedByQuizPass(t *testing.T) {
+	svc, repo, _, as, _, qz := build()
+	as.ids[7] = []int64{20} // lesson 7's only assignment
+	qz.quizIDs[20] = true   // ...is a quiz
+	repo.result = CompleteResult{Course: CourseCounts{CourseID: 3, TotalLessons: 2, CompletedLessons: 1}}
+
+	// failed / no passing attempt -> blocked (spec §45)
+	if _, err := svc.CompleteLesson(context.Background(), 5, 7); !errors.Is(err, ErrAssignmentIncomplete) {
+		t.Fatalf("want ErrAssignmentIncomplete, got %v", err)
+	}
+
+	// passing attempt -> allowed (spec §44)
+	qz.passed[20] = true
+	if _, err := svc.CompleteLesson(context.Background(), 5, 7); err != nil {
+		t.Fatalf("CompleteLesson after quiz pass: %v", err)
+	}
+	if !repo.completed[[2]int64{5, 7}] {
+		t.Fatal("expected CompleteLessonTx to run")
+	}
+}
+
 func TestCompleteLesson_NoAssignmentCompletesImmediately(t *testing.T) {
-	svc, repo, _, _, _ := build()
+	svc, repo, _, _, _, _ := build()
 	repo.result = CompleteResult{Course: CourseCounts{CourseID: 3, TotalLessons: 1, CompletedLessons: 1}, EnrollmentCompleted: true}
 
 	res, err := svc.CompleteLesson(context.Background(), 5, 7)
@@ -142,7 +190,7 @@ func TestCompleteLesson_NoAssignmentCompletesImmediately(t *testing.T) {
 }
 
 func TestCourseProgress_RequiresEnrollment(t *testing.T) {
-	svc, _, en, _, _ := build()
+	svc, _, en, _, _, _ := build()
 	en.status = map[[2]int64]string{}
 	if _, err := svc.CourseProgress(context.Background(), 5, 3); !errors.Is(err, ErrNotEnrolled) {
 		t.Fatalf("want ErrNotEnrolled, got %v", err)

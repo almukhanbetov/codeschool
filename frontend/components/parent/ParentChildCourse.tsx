@@ -108,11 +108,21 @@ export function ParentChildCourse({
 
         <h2 className="teacher-section-title">{t.family.assignments}</h2>
         <div className="family-assignments">
-          {detail.assignments.map((a) => (
+          {detail.assignments.map((a) => {
+            const isQuiz = a.assignmentType === "quiz";
+            return (
             <div className="assignment-panel" key={a.assignmentId}>
               <div className="assignment-head">
                 <h3>{a.title}</h3>
-                {a.status ? (
+                {isQuiz ? (
+                  (a.quizAttempts ?? 0) > 0 ? (
+                    <span className={a.quizPassed ? "quiz-mark-ok" : "quiz-mark-bad"}>
+                      {a.quizPassed ? t.teach.quizPassed : t.teach.quizFailed}
+                    </span>
+                  ) : (
+                    <span className="teacher-muted">{t.teach.quizNotTaken}</span>
+                  )
+                ) : a.status ? (
                   <SubmissionBadge status={a.status} />
                 ) : (
                   <span className="teacher-muted">{t.family.noSubmission}</span>
@@ -120,10 +130,16 @@ export function ParentChildCourse({
               </div>
               <p className="teacher-meta">
                 {t.family.lesson}: {a.lessonTitle}
-                {a.score != null ? ` · ${t.family.score}: ${a.score} / ${a.points}` : ""}
+                {isQuiz
+                  ? ` · ${t.teach.quizAttempts}: ${a.quizAttempts ?? 0}${
+                      a.quizBestPercent != null ? ` · ${t.teach.quizBest}: ${a.quizBestPercent}%` : ""
+                    }`
+                  : a.score != null
+                    ? ` · ${t.family.score}: ${a.score} / ${a.points}`
+                    : ""}
               </p>
 
-              {a.status === "submitted" || a.status === "checking" ? (
+              {!isQuiz && (a.status === "submitted" || a.status === "checking") ? (
                 <p className="assignment-hint">{t.family.awaitingReview}</p>
               ) : null}
 
@@ -138,7 +154,8 @@ export function ParentChildCourse({
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

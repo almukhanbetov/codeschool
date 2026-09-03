@@ -149,6 +149,48 @@ export function TeacherStudentDetail({
             </tbody>
           </table>
         </div>
+
+        {detail.quizResults.length > 0 && (
+          <>
+            <h2 className="teacher-section-title">{t.teach.quizResults}</h2>
+            <div className="teacher-table-wrap">
+              <table className="teacher-table">
+                <thead>
+                  <tr>
+                    <th>{t.teach.assignment}</th>
+                    <th>{t.teach.lesson}</th>
+                    <th>{t.teach.quizBest}</th>
+                    <th>{t.teach.quizAttempts}</th>
+                    <th>{t.teach.score}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.quizResults.map((qr) => (
+                    <tr key={qr.assignmentId}>
+                      <td data-label={t.teach.assignment}>
+                        <span className="teacher-cell-title">{qr.title}</span>
+                      </td>
+                      <td data-label={t.teach.lesson}>{qr.lessonTitle}</td>
+                      <td data-label={t.teach.quizBest}>
+                        {qr.bestPercent != null ? `${qr.bestPercent}%` : t.teach.quizNotTaken}
+                      </td>
+                      <td data-label={t.teach.quizAttempts}>{qr.attempts}</td>
+                      <td data-label={t.teach.score}>
+                        {qr.attempts === 0 ? (
+                          <span className="teacher-muted">—</span>
+                        ) : (
+                          <span className={qr.passed ? "quiz-mark-ok" : "quiz-mark-bad"}>
+                            {qr.passed ? t.teach.quizPassed : t.teach.quizFailed}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );
