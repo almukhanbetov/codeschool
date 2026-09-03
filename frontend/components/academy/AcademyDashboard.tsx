@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { ApiError, getAcademyDashboard } from "@/lib/api";
-import type { AcademyDashboard as Dashboard } from "@/types";
+import { ApiError, getAcademyDashboard, getMyCertificates } from "@/lib/api";
+import { CertificateCTA } from "@/components/certificates/CertificateCTA";
+import type { AcademyDashboard as Dashboard, Certificate } from "@/types";
 
 type State =
   | { kind: "loading" }
   | { kind: "error" }
-  | { kind: "ready"; data: Dashboard };
+  | { kind: "ready"; data: Dashboard; certs: Map<number, Certificate> };
 
 export function AcademyDashboard() {
   const { t } = useLanguage();
@@ -20,8 +21,18 @@ export function AcademyDashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    getAcademyDashboard()
-      .then((data) => !cancelled && setState({ kind: "ready", data }))
+    Promise.all([
+      getAcademyDashboard(),
+      getMyCertificates().catch(() => [] as Certificate[]),
+    ])
+      .then(([data, certs]) => {
+        if (cancelled) return;
+        setState({
+          kind: "ready",
+          data,
+          certs: new Map(certs.map((cert) => [cert.course.id, cert])),
+        });
+      })
       .catch((err) => {
         if (cancelled) return;
         setState({ kind: err instanceof ApiError ? "error" : "error" });
@@ -88,6 +99,12 @@ export function AcademyDashboard() {
                   {c.certificateEligible && (
                     <span className="academy-cert-tag">{a.certificateReady}</span>
                   )}
+                  <CertificateCTA
+                    courseId={c.courseId}
+                    eligible={c.certificateEligible}
+                    prefix="/teacher-academy"
+                    existing={state.certs.get(c.courseId)}
+                  />
                 </div>
               </div>
             ))}

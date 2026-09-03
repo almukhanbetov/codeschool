@@ -4,9 +4,11 @@ go 1.26.0
 
 require (
 	github.com/gin-gonic/gin v1.12.0
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/jackc/pgx/v5 v5.10.0
 	golang.org/x/crypto v0.48.0
+	rsc.io/qr v0.2.0
 )
 
 require (

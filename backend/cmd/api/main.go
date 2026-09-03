@@ -15,6 +15,7 @@ import (
 	"codeschool/backend/internal/admin"
 	"codeschool/backend/internal/assignments"
 	"codeschool/backend/internal/auth"
+	"codeschool/backend/internal/certificates"
 	"codeschool/backend/internal/config"
 	"codeschool/backend/internal/courses"
 	"codeschool/backend/internal/database"
@@ -165,6 +166,15 @@ func run() error {
 	academyHandler := academy.NewHandler(academyService)
 	academyAdminHandler := academy.NewAdminHandler(academyService)
 
+	// Certificates: one universal engine for every learner (student or
+	// teacher academy). Eligibility is derived from existing enrollment /
+	// lesson_progress state; admin revocations are written to admin_audit_log
+	// (adminRepo is the auditor).
+	certificatesRepo := certificates.NewRepository(pool)
+	certificatesService := certificates.NewService(certificatesRepo, adminRepo, cfg.PublicBaseURL)
+	certificatesHandler := certificates.NewHandler(certificatesService)
+	certificatesAdminHandler := certificates.NewAdminHandler(certificatesService)
+
 	apiV1 := router.Group("/api/v1")
 	programs.RegisterRoutes(apiV1, programsHandler)
 	levels.RegisterRoutes(apiV1, levelsHandler)
@@ -175,11 +185,18 @@ func run() error {
 	// Public auth endpoints (register/login/refresh/logout).
 	auth.RegisterRoutes(apiV1, authHandler)
 
+	// Public certificate verification — GET /certificates/verify/:code.
+	certificates.RegisterPublicRoutes(apiV1, certificatesHandler)
+
 	// Protected endpoints — require a valid access token.
 	protected := apiV1.Group("")
 	protected.Use(authMiddleware)
 	users.RegisterRoutes(protected, usersHandler)
 	registerRolePings(protected)
+
+	// Certificates are available to any authenticated learner (student or
+	// teacher academy) — ownership, not role, is the boundary.
+	certificates.RegisterLearnerRoutes(protected, certificatesHandler)
 
 	// Student-only endpoints — valid access token + role == "student".
 	student := protected.Group("")
@@ -210,6 +227,7 @@ func run() error {
 	progress.RegisterRoutes(academyGroup, progressHandler)
 	quizzes.RegisterStudentRoutes(academyGroup, quizzesHandler)
 	runs.RegisterStudentRoutes(academyGroup, runsHandler)
+	certificates.RegisterAcademyRoutes(academyGroup, certificatesHandler)
 
 	// Parent-only endpoints — valid access token + role == "parent". Every
 	// route is read-only (GET).
@@ -224,6 +242,7 @@ func run() error {
 	quizzes.RegisterAdminRoutes(adminGroup, quizzesAdminHandler)
 	runs.RegisterAdminRoutes(adminGroup, runsAdminHandler)
 	academy.RegisterAdminRoutes(adminGroup, academyAdminHandler)
+	certificates.RegisterAdminRoutes(adminGroup, certificatesAdminHandler)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

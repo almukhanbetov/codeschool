@@ -475,6 +475,7 @@ export interface AdminTranslations {
   navLinks: string;
   navAudit: string;
   navAcademy: string;
+  navCertificates: string;
   backToPanel: string;
   // overview
   ovUsers: string;
@@ -703,6 +704,57 @@ export interface AcademyTranslations {
   tracks: { title: string; text: string }[];
 }
 
+export interface CertificatesTranslations {
+  navTitle: string;
+  myTitle: string;
+  mySubtitle: string;
+  empty: string;
+  colCourse: string;
+  colNumber: string;
+  colIssued: string;
+  colStatus: string;
+  statusActive: string;
+  statusRevoked: string;
+  getCertificate: string;
+  downloadPdf: string;
+  issuing: string;
+  downloading: string;
+  verify: string;
+  notEligibleYet: string;
+  issueError: string;
+  // public verification page
+  verifyTitle: string;
+  verifySubtitle: string;
+  verifyValid: string;
+  verifyRevoked: string;
+  verifyInvalid: string;
+  verifyLearner: string;
+  verifyCourse: string;
+  verifyNumber: string;
+  verifyIssued: string;
+  verifyCompleted: string;
+  verifyRevokedAt: string;
+  verifyLoading: string;
+  // admin
+  adminTitle: string;
+  adminSubtitle: string;
+  adminFilterAll: string;
+  adminColLearner: string;
+  adminColRole: string;
+  adminView: string;
+  adminRevoke: string;
+  adminRevokeTitle: string;
+  adminRevokeReason: string;
+  adminRevokeReasonPlaceholder: string;
+  adminRevokeConfirm: string;
+  adminRevokeSubmit: string;
+  adminRevokeReasonRequired: string;
+  adminRevokedBadge: string;
+  adminRevokedReason: string;
+  adminDownloadPdf: string;
+  adminBack: string;
+}
+
 export interface Translations {
   meta: { title: string };
   nav: NavTranslations;
@@ -715,6 +767,7 @@ export interface Translations {
   family: FamilyTranslations;
   admin: AdminTranslations;
   academy: AcademyTranslations;
+  certificates: CertificatesTranslations;
   hero: HeroTranslations;
   path: PathTranslations;
   directions: DirectionsTranslations;
@@ -961,6 +1014,57 @@ export interface CourseListFilter {
   ageFrom?: number;
   ageTo?: number;
   levelId?: number;
+}
+
+/* ---- Certificates (backend/internal/certificates) ---- */
+
+export type CertificateStatus = "active" | "revoked";
+
+export interface Certificate {
+  id: number;
+  certificateNumber: string;
+  verificationCode: string;
+  course: { id: number; title: string };
+  learnerName: string;
+  issuedAt: string;
+  completedAt: string;
+  status: CertificateStatus;
+  verifyUrl: string;
+}
+
+export interface CertificateVerification {
+  valid: boolean;
+  status: CertificateStatus;
+  certificateNumber: string;
+  learnerName: string;
+  courseTitle: string;
+  issuedAt: string;
+  completedAt: string;
+  revokedAt?: string | null;
+}
+
+export interface AdminCertificateRow {
+  id: number;
+  certificateNumber: string;
+  verificationCode: string;
+  userId: number;
+  learnerName: string;
+  learnerRole: UserRole;
+  courseId: number;
+  courseTitle: string;
+  issuedAt: string;
+  completedAt: string;
+  status: CertificateStatus;
+  revokedAt?: string | null;
+  revokedBy?: number | null;
+  revokeReason?: string | null;
+}
+
+export interface AdminCertificateList {
+  items: AdminCertificateRow[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 /* ---- Auth / users (backend/internal/{auth,users}) ---- */

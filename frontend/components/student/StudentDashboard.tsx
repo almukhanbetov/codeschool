@@ -68,9 +68,14 @@ export function StudentDashboard() {
 
             <div className="student-dash-head">
               <h2>{t.student.myCourses}</h2>
-              <Link href="/student/courses" className="student-viewall">
-                {t.student.viewAll}
-              </Link>
+              <div className="student-dash-links">
+                <Link href="/student/certificates" className="student-viewall">
+                  {t.certificates.navTitle}
+                </Link>
+                <Link href="/student/courses" className="student-viewall">
+                  {t.student.viewAll}
+                </Link>
+              </div>
             </div>
 
             <div className="course-grid">

@@ -22,6 +22,11 @@ type Config struct {
 	// http://runner:8090). Empty disables the code runner — its endpoints
 	// then return 503.
 	RunnerURL string
+
+	// PublicBaseURL is the public origin of the frontend, used to build the
+	// certificate verification URLs printed (and QR-encoded) on issued
+	// certificate PDFs, e.g. https://codeschool.example.
+	PublicBaseURL string
 }
 
 func Load() (*Config, error) {
@@ -35,6 +40,15 @@ func Load() (*Config, error) {
 
 	origins := getEnvDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
 	allowedOrigins := splitAndTrim(origins)
+
+	publicBaseURL := os.Getenv("PUBLIC_BASE_URL")
+	if publicBaseURL == "" && len(allowedOrigins) > 0 {
+		publicBaseURL = allowedOrigins[0]
+	}
+	if publicBaseURL == "" {
+		publicBaseURL = "http://localhost:3000"
+	}
+	publicBaseURL = strings.TrimRight(publicBaseURL, "/")
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -59,6 +73,7 @@ func Load() (*Config, error) {
 		JWTAccessTTL:       accessTTL,
 		JWTRefreshTTL:      refreshTTL,
 		RunnerURL:          strings.TrimRight(os.Getenv("RUNNER_URL"), "/"),
+		PublicBaseURL:      publicBaseURL,
 	}, nil
 }
 

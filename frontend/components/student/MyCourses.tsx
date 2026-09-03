@@ -5,13 +5,19 @@ import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { getMyCourses, getMyProgress } from "@/lib/api";
-import type { CourseProgress, MyCourseItem } from "@/types";
+import { getMyCertificates, getMyCourses, getMyProgress } from "@/lib/api";
+import { CertificateCTA } from "@/components/certificates/CertificateCTA";
+import type { Certificate, CourseProgress, MyCourseItem } from "@/types";
 
 type State =
   | { kind: "loading" }
   | { kind: "error" }
-  | { kind: "ready"; courses: MyCourseItem[]; progress: Map<number, CourseProgress> };
+  | {
+      kind: "ready";
+      courses: MyCourseItem[];
+      progress: Map<number, CourseProgress>;
+      certs: Map<number, Certificate>;
+    };
 
 export function MyCourses() {
   const { t } = useLanguage();
@@ -21,12 +27,17 @@ export function MyCourses() {
     let cancelled = false;
     (async () => {
       try {
-        const [courses, progress] = await Promise.all([getMyCourses(), getMyProgress()]);
+        const [courses, progress, certs] = await Promise.all([
+          getMyCourses(),
+          getMyProgress(),
+          getMyCertificates().catch(() => [] as Certificate[]),
+        ]);
         if (cancelled) return;
         setState({
           kind: "ready",
           courses,
           progress: new Map(progress.map((p) => [p.courseId, p])),
+          certs: new Map(certs.map((cert) => [cert.course.id, cert])),
         });
       } catch {
         if (!cancelled) setState({ kind: "error" });
@@ -66,6 +77,9 @@ export function MyCourses() {
           <div className="course-grid">
             {state.courses.map((item) => {
               const p = state.progress.get(item.course.id);
+              const eligible =
+                item.status === "completed" ||
+                (!!p && p.totalLessons > 0 && p.completedLessons >= p.totalLessons);
               return (
                 <article className="course-card" key={item.enrollmentId}>
                   <div className="course-tag course-tag-neutral">
@@ -87,6 +101,11 @@ export function MyCourses() {
                   >
                     {t.student.continueLearning}
                   </Button>
+                  <CertificateCTA
+                    courseId={item.course.id}
+                    eligible={eligible}
+                    existing={state.certs.get(item.course.id)}
+                  />
                 </article>
               );
             })}

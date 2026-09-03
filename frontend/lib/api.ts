@@ -72,6 +72,10 @@ import type {
   AcademyLearnerRow,
   AcademySubmissionRow,
   AcademySubmissionDetail,
+  Certificate,
+  CertificateVerification,
+  AdminCertificateRow,
+  AdminCertificateList,
 } from "@/types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
@@ -265,6 +269,64 @@ async function browserFetch<T>(
   }
 
   return (body as DataEnvelope<T>).data;
+}
+
+// browserFetchBlob is browserFetch for binary responses (PDF downloads). It
+// reuses the same auth + one-shot token-refresh flow but returns a Blob.
+async function browserFetchBlob(path: string): Promise<Blob> {
+  const build = () => {
+    const h = new Headers();
+    if (accessToken) h.set("Authorization", `Bearer ${accessToken}`);
+    return h;
+  };
+  const call = () =>
+    fetch(`${BROWSER_API_URL}${path}`, {
+      cache: "no-store",
+      credentials: "include",
+      headers: build(),
+    });
+
+  let res: Response;
+  try {
+    res = await call();
+  } catch {
+    throw new ApiError(0, "NETWORK_ERROR", "Could not reach the API");
+  }
+  if (res.status === 401 && tokenRefresher) {
+    const fresh = await tokenRefresher();
+    if (fresh) {
+      try {
+        res = await call();
+      } catch {
+        throw new ApiError(0, "NETWORK_ERROR", "Could not reach the API");
+      }
+    }
+  }
+  if (!res.ok) {
+    let message = `Request failed with status ${res.status}`;
+    let code = "UNKNOWN_ERROR";
+    try {
+      const body = (await res.json()) as Partial<ErrorEnvelope>;
+      message = body?.error?.message ?? message;
+      code = body?.error?.code ?? code;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(res.status, code, message);
+  }
+  return res.blob();
+}
+
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoke on the next tick so the download has started.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export function login(input: LoginInput): Promise<LoginResult> {
@@ -476,6 +538,73 @@ export const adminAcademyApi = {
       body: JSON.stringify(body),
       auth: true,
     }),
+};
+
+/* =========================================================
+   Certificates — one universal engine for every learner (student or
+   teacher academy). Ownership, not role, is the boundary.
+   ========================================================= */
+
+// Issue-or-get (idempotent). prefix "" hits /courses/:id/certificate;
+// prefix "/teacher-academy" hits the academy alias — same backend service.
+export function issueCertificate(courseId: number, prefix = ""): Promise<Certificate> {
+  return browserFetch<Certificate>(`${prefix}/courses/${courseId}/certificate`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export function getMyCertificates(): Promise<Certificate[]> {
+  return browserFetch<Certificate[]>("/me/certificates", { auth: true });
+}
+
+export function getMyCertificate(id: number): Promise<Certificate> {
+  return browserFetch<Certificate>(`/me/certificates/${id}`, { auth: true });
+}
+
+// Public — no auth. Throws ApiError(404) when the code is unknown.
+export function verifyCertificate(code: string): Promise<CertificateVerification> {
+  return browserFetch<CertificateVerification>(
+    `/certificates/verify/${encodeURIComponent(code)}`
+  );
+}
+
+// Streams the owner's certificate PDF and triggers a browser download.
+export async function downloadCertificatePdf(
+  id: number,
+  lang: string,
+  filenameHint: string
+): Promise<void> {
+  const blob = await browserFetchBlob(`/me/certificates/${id}/pdf?lang=${encodeURIComponent(lang)}`);
+  triggerDownload(blob, `${filenameHint}.pdf`);
+}
+
+export const adminCertificatesApi = {
+  list: (params: { status?: string; courseId?: number; q?: string; page?: number; limit?: number }) =>
+    browserFetch<AdminCertificateList>(
+      `/admin/certificates${buildQuery({
+        status: params.status,
+        course_id: params.courseId,
+        q: params.q,
+        page: params.page,
+        limit: params.limit,
+      })}`,
+      { auth: true }
+    ),
+  get: (id: number) =>
+    browserFetch<AdminCertificateRow>(`/admin/certificates/${id}`, { auth: true }),
+  revoke: (id: number, reason: string) =>
+    browserFetch<AdminCertificateRow>(`/admin/certificates/${id}/revoke`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+      auth: true,
+    }),
+  downloadPdf: async (id: number, lang: string, filenameHint: string) => {
+    const blob = await browserFetchBlob(
+      `/admin/certificates/${id}/pdf?lang=${encodeURIComponent(lang)}`
+    );
+    triggerDownload(blob, `${filenameHint}.pdf`);
+  },
 };
 
 /* =========================================================
