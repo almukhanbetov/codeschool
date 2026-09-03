@@ -95,6 +95,64 @@ Open http://localhost:3000.
 
 `backend/seeds/dev_seed.sql` is plain SQL, run manually, never automatically — see `backend/README.md`. It creates one program ("Computer Science Kids"), one level, and 6 courses reusing the names/ages already present in `frontend/data/*.ts` where they overlapped (Scratch Junior, Python Start, Robotics Arduino, AI Junior — plus "Основы алгоритмов" and "Web Development"), with 4 modules and 5 lessons under "Python Start", one text/code assignment each on three lessons, a fully-authored **quiz** ("Тест: Циклы Python", 5 questions, pass 70 %) on the "Цикл for" lesson, and two **code-runner test cases** (one visible, one hidden) on the "Hello, Kazakhstan!" Python assignment. It also seeds the **Teacher Academy**: program "Teacher Academy" → course "Методика преподавания Python" (`audience = teacher`), 3 modules / 5 lessons — a text methodology lesson, a 3-question methodology **quiz**, a Python **code** task (2 tests) and a **practical teaching assignment** (a 45-minute lesson plan) — with `teacher@codeschool.local` enrolled.
 
+## Demo learning flow (end-to-end)
+
+A dedicated, self-contained scenario for walking the whole LMS from zero —
+login → enrol → lessons → quiz → code task → **final exam** → 100 % →
+**certificate** → PDF → public verification.
+
+```bash
+# once (adds demo.student@codeschool.local and the demo course CONTENT only —
+#  no enrolment, no progress, no certificate: you walk it yourself)
+docker compose exec -T postgres psql -U codeschool -d codeschool < backend/seeds/dev_seed_users.sql
+docker compose exec -T postgres psql -U codeschool -d codeschool < backend/seeds/demo_learning.sql
+
+# start over any time (clears ONLY the demo student's state for this course)
+docker compose exec -T postgres psql -U codeschool -d codeschool < backend/seeds/reset_demo_learning.sql
+
+# automated proof of the full flow (resets before + after, never leaves state behind)
+python3 backend/seeds/demo_e2e.py
+```
+
+**Demo account** (development only): `demo.student@codeschool.local` / `Password123!`
+
+**Demo course** `python-demo-course` — *"Python с нуля — демонстрационный курс"*
+(KZ: *Python нөлден — демонстрациялық курс*, EN: *Python from Zero — Demo Course*),
+program **"Программирование для детей"** → level **"Начальный"**, `audience = student`,
+published, `beginner`, ages 10–14. **3 modules, 9 lessons:**
+
+| # | Module | Lesson | Gate to complete the lesson |
+| - | --- | --- | --- |
+| 1 | Основы Python | Что такое программа · Команда print() · Переменные | click **Complete** |
+| 2 | Условия и логика | Условие if · Практика: сравнения | click **Complete** |
+| 2 | Условия и логика | **Проверка знаний — основы Python** (quiz, 6 Q) | pass ≥ **70 %** (≤ 3 attempts) |
+| 3 | Финальная практика | **Приветствие пользователя** (Python code, 1 visible + 2 hidden tests) | all tests pass (auto-graded) |
+| 3 | Финальная практика | **Финальный тест курса Python** (final exam, 12 Q) | pass ≥ **80 %** (≤ 3 attempts) |
+| 3 | Финальная практика | Итог курса | click **Complete** |
+
+**Course completion / certificate rule** (the existing authoritative progress
+engine — not duplicated anywhere): the enrolment auto-completes, and the
+certificate becomes eligible, only when **every published lesson is completed**
+— which for lessons 6–8 means the first quiz passed (≥ 70 %), the code task
+passed (all hidden tests), and the final exam passed (≥ 80 %).
+
+### Manual browser walkthrough
+
+1. **Login** — <http://localhost:3000/login> → `demo.student@codeschool.local` / `Password123!`
+2. **Open the course** — <http://localhost:3000/courses/python-demo-course> → **Enroll** → *«Начать обучение»*
+3. **Module 1 & 2 text lessons** — open each, **«Завершить урок»**.
+4. **Quiz «Проверка знаний»** — *Attempt 1*: answer wrong on purpose → **< 70 %, FAILED**. *Attempt 2*: correct answers
+   (`print()` → «Выводит текст на экран»; регистр → «Верно»; типы → string + integer + boolean; `print(x)` → `5`;
+   переменная → `name = "Аян"`; строка в кавычках → «Верно») → **PASSED** → complete the lesson. Attempt history is kept.
+5. **Code task «Приветствие пользователя»** — *wrong first*: `print("Hello")` → **hidden tests fail**.
+   *Then*: `name = input()` / `print("Hello, " + name + "!")` → **all 3 tests pass**, assignment **passed** → complete the lesson.
+6. **Final exam** — *Attempt 1*: wrong → **< 80 %**, the lesson **won't complete** (course stays incomplete).
+   *Attempt 2*: correct answers → **≥ 80 %** → complete the lesson, then complete **«Итог курса»**.
+7. **Progress** — student dashboard shows the course at **100 %**, enrolment **completed**.
+8. **Certificate** — *«Мои сертификаты»* → **«Получить сертификат»**. Reload, click again → the **same** certificate (no duplicate).
+9. **PDF** — *«Скачать сертификат»* → learner **Demo Student**, course title, certificate number, verification code, QR, completion date.
+10. **Public verify** — open `/certificates/verify/<code>` in a private window (no login) → **valid**, learner name, course, number, issued date. No private fields.
+
 ## API
 
 Full endpoint list, request/response shapes, and the error format are documented in `backend/README.md`. Quick reference:

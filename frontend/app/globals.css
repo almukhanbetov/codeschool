@@ -1299,6 +1299,7 @@ svg.lucide { display: inline-block; width: 1em; height: 1em; stroke-width: 2; }
 .cert-meta dd { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
 
 .cert-cta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.cert-cta-hint { margin-top: 8px; font-size: 0.8rem; color: var(--text-tertiary); }
 
 .cert-badge-revoked { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
 

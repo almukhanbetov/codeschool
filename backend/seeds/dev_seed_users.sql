@@ -4,11 +4,12 @@
 --
 -- Development credentials only. Do not use in production.
 --
---   admin@codeschool.local     / Password123!   (role: admin)
---   teacher@codeschool.local   / Password123!   (role: teacher)
---   student@codeschool.local   / Password123!   (role: student)
---   student2@codeschool.local  / Password123!   (role: student)
---   parent@codeschool.local    / Password123!   (role: parent)
+--   admin@codeschool.local        / Password123!   (role: admin)
+--   teacher@codeschool.local      / Password123!   (role: teacher)
+--   student@codeschool.local      / Password123!   (role: student)
+--   student2@codeschool.local     / Password123!   (role: student)
+--   parent@codeschool.local       / Password123!   (role: parent)
+--   demo.student@codeschool.local / Password123!   (role: student) — full demo learning flow, see seeds/demo_learning.sql
 --
 -- The password_hash values below are pre-computed bcrypt hashes of
 -- "Password123!" (cost 10). The plain password is never stored here. Public
@@ -23,7 +24,10 @@ VALUES
     ('teacher@codeschool.local', NULL, '$2a$10$LB/pO0VFIRn26d9SYDmuI.pu192UIsFPt3guqbjrSnD1aj8q.3gda', 'Aigerim', 'Teacher',    'teacher', TRUE),
     ('student@codeschool.local',  NULL, '$2a$10$fNc1hIYLN6yYviheQfB7BOvYIkq94yHT/sgEl0zIeY.ncxnURDbku', 'Ayan',   'Student',    'student', TRUE),
     ('student2@codeschool.local', NULL, '$2a$10$fNc1hIYLN6yYviheQfB7BOvYIkq94yHT/sgEl0zIeY.ncxnURDbku', 'Dana',   'Student',    'student', TRUE),
-    ('parent@codeschool.local',   NULL, '$2a$10$tePigWpIhxxdaxcpa07OLeYWiBVVGfMFJKiGidptFB.W/jLDatQt6', 'Bekzat', 'Parent',     'parent',  TRUE)
+    ('parent@codeschool.local',   NULL, '$2a$10$tePigWpIhxxdaxcpa07OLeYWiBVVGfMFJKiGidptFB.W/jLDatQt6', 'Bekzat', 'Parent',     'parent',  TRUE),
+    -- Demo student for the full end-to-end learning flow (seeds/demo_learning.sql).
+    -- Same "Password123!" bcrypt hash as the other dev students.
+    ('demo.student@codeschool.local', NULL, '$2a$10$fNc1hIYLN6yYviheQfB7BOvYIkq94yHT/sgEl0zIeY.ncxnURDbku', 'Demo', 'Student', 'student', TRUE)
 ON CONFLICT (lower(email)) WHERE email IS NOT NULL DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
     first_name = EXCLUDED.first_name,

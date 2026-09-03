@@ -17,9 +17,11 @@ interface Props {
 }
 
 /**
- * Course-completion certificate call to action. Renders nothing until the
- * course is genuinely complete (eligibility is confirmed by the backend on
- * issue — this flag only controls whether the button is shown).
+ * Course-completion certificate call to action. Before the course is
+ * complete it shows a muted "not available yet" hint; once eligible (or a
+ * certificate already exists) it shows the issue / download actions.
+ * Eligibility is re-checked authoritatively by the backend on issue — this
+ * flag only drives the UI.
  */
 export function CertificateCTA({ courseId, eligible, prefix = "", existing }: Props) {
   const { t, lang } = useLanguage();
@@ -28,7 +30,9 @@ export function CertificateCTA({ courseId, eligible, prefix = "", existing }: Pr
   const [busy, setBusy] = useState<"issue" | "download" | null>(null);
   const [error, setError] = useState(false);
 
-  if (!eligible && !cert) return null;
+  if (!eligible && !cert) {
+    return <p className="cert-cta-hint">{c.notEligibleYet}</p>;
+  }
 
   async function issue() {
     setBusy("issue");

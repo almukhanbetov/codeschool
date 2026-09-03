@@ -113,6 +113,7 @@ Seeds are plain SQL, kept separate from migrations, and are **not** run automati
 ```bash
 psql "$DATABASE_URL" -f seeds/dev_seed.sql        # catalog: programs/levels/courses/modules/lessons
 psql "$DATABASE_URL" -f seeds/dev_seed_users.sql  # dev users (see below)
+psql "$DATABASE_URL" -f seeds/demo_learning.sql   # one full end-to-end demo course (content only)
 ```
 
 `dev_seed.sql` inserts one program ("Computer Science Kids"), one level, and 6 courses, plus 4 modules and 5 lessons under "Python Start". Safe to re-run — it upserts by slug.
@@ -128,8 +129,38 @@ psql "$DATABASE_URL" -f seeds/dev_seed_users.sql  # dev users (see below)
 | `student@codeschool.local` | student |
 | `student2@codeschool.local` | student |
 | `parent@codeschool.local` | parent |
+| `demo.student@codeschool.local` | student |
 
 Public registration cannot create an `admin` — that account only exists via this seed.
+
+### Demo learning flow
+
+`seeds/demo_learning.sql` seeds **one complete, walkable scenario**: program
+**"Программирование для детей"** → level **"Начальный"** → course
+**`python-demo-course`** (`audience = student`, published, beginner, ages 10–14)
+with **3 modules / 9 lessons** — 6 plain text/code lessons plus a **quiz**
+("Проверка знаний — основы Python", 6 Q, pass 70 %, ≤ 3 attempts), a **Python
+code task** ("Приветствие пользователя", `name = input()` starter, 1 visible +
+2 hidden `assignment_tests`), and a **final exam** ("Финальный тест курса
+Python", 12 Q, pass 80 %, ≤ 3 attempts). It reuses the existing engine
+unchanged and is idempotent — program/level/course upsert by slug, the module
+tree is built only on the first run.
+
+It creates **content only**: the demo student is **not** enrolled, has no
+lesson progress, quiz attempts, code runs or certificate. Course completion
+and certificate eligibility are decided by the existing authoritative progress
+engine (every published lesson completed ⇒ enrolment auto-completes ⇒
+`certificateEligible`).
+
+```bash
+psql "$DATABASE_URL" -f seeds/reset_demo_learning.sql   # wipe ONLY the demo student's state for this course
+python3 seeds/demo_e2e.py                                # automated end-to-end proof (resets before + after)
+```
+
+`reset_demo_learning.sql` deletes, for `demo.student@codeschool.local` +
+`python-demo-course` only: `certificates`, `quiz_attempts` (answers/options
+cascade), `code_runs`, `submissions`, `lesson_progress`, `enrollments`. It never
+touches course structure, quiz questions, assignment tests, or any other user.
 
 ## Run locally
 
