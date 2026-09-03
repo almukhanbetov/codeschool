@@ -29,6 +29,35 @@ services:
       postgres:
         condition: service_healthy
 
+  # Sandboxed code-execution service. It runs untrusted student code, so it is
+  # kept off the internet (internal-only network), non-root, with every Linux
+  # capability dropped, a read-only rootfs (scratch on tmpfs), and hard
+  # pid / memory / cpu caps. It is NOT published on a host port — only the
+  # backend reaches it over the internal network. The runner binary adds the
+  # per-execution guards (wall-clock timeout, ulimits, output caps).
+  runner:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.runner
+    restart: unless-stopped
+    environment:
+      PORT: 8090
+    networks:
+      - sandbox
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      # /work holds the compiled binary for `go run`, so it must allow exec.
+      - /work:exec,size=512m,mode=1777
+      - /gocache:size=256m,mode=0777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 512m
+    cpus: "1.5"
+
   backend:
     build:
       context: ./backend
@@ -41,8 +70,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
       JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
       JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-720h}
+      RUNNER_URL: ${RUNNER_URL:-http://runner:8090}
     ports:
       - "8080:8080"
+    networks:
+      - default
+      - sandbox
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,6 +100,12 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+
+networks:
+  default: {}
+  # No internet egress: student code in the runner cannot phone home.
+  sandbox:
+    internal: true
 
 volumes:
   postgres_data:

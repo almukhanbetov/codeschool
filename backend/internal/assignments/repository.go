@@ -105,6 +105,20 @@ func (r *Repository) GetPublishedByID(ctx context.Context, id int64) (Assignment
 	return a, courseID, nil
 }
 
+// GetByID returns any assignment by id (published or not) — for admin/authoring
+// callers. ErrNotFound if it does not exist.
+func (r *Repository) GetByID(ctx context.Context, id int64) (Assignment, error) {
+	row := r.pool.QueryRow(ctx, `SELECT `+columns+` FROM assignments WHERE id = $1`, id)
+	a, err := scanAssignment(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Assignment{}, ErrNotFound
+	}
+	if err != nil {
+		return Assignment{}, fmt.Errorf("get assignment by id: %w", err)
+	}
+	return a, nil
+}
+
 type rowScanner interface {
 	Scan(dest ...any) error
 }

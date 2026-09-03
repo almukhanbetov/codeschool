@@ -29,7 +29,9 @@ type repository interface {
 	MarkSubmitted(ctx context.Context, id int64) (Submission, error)
 	StartReview(ctx context.Context, id int64) (Submission, error)
 	ApplyReview(ctx context.Context, id int64, score *int, feedback *string, status string) (Submission, error)
+	AutoGrade(ctx context.Context, id int64, code *string, score *int, feedback *string, status string) (Submission, error)
 	CountNonDraftForAssignments(ctx context.Context, studentID int64, assignmentIDs []int64) (int, error)
+	CountPassedForAssignments(ctx context.Context, studentID int64, assignmentIDs []int64) (int, error)
 }
 
 type Service struct {
@@ -117,6 +119,52 @@ func (s *Service) Submit(ctx context.Context, studentID, assignmentID int64) (Re
 		return Response{}, err
 	}
 	return toResponse(submitted), nil
+}
+
+// AutoGradeSubmit records an automatic verdict on the student's own code
+// submission — used by the code runner's hidden-test grader (spec §7). It
+// saves the latest code, then transitions the submission straight to
+// `passed` / `failed` with a score + summary, no teacher involved. Like a
+// resubmission, it is allowed only while the submission is `draft` or
+// `failed`.
+func (s *Service) AutoGradeSubmit(ctx context.Context, studentID, assignmentID int64, code string, score *int, passed bool, summary string) (Response, error) {
+	if err := s.authorize(ctx, studentID, assignmentID); err != nil {
+		return Response{}, err
+	}
+	codePtr := &code
+
+	existing, err := s.repo.Get(ctx, studentID, assignmentID)
+	if errors.Is(err, ErrNotFound) {
+		created, cerr := s.repo.Create(ctx, studentID, assignmentID, codePtr, nil)
+		if cerr != nil {
+			return Response{}, cerr
+		}
+		existing = created
+	} else if err != nil {
+		return Response{}, err
+	} else if !isEditable(existing.Status) {
+		return Response{}, ErrLocked
+	}
+
+	status := StatusFailed
+	if passed {
+		status = StatusPassed
+	}
+	var feedbackPtr *string
+	if strings.TrimSpace(summary) != "" {
+		feedbackPtr = &summary
+	}
+	graded, err := s.repo.AutoGrade(ctx, existing.ID, codePtr, score, feedbackPtr, status)
+	if err != nil {
+		return Response{}, err
+	}
+	return toResponse(graded), nil
+}
+
+// CountPassedForAssignments counts the student's `passed` submissions among a
+// set of assignments — the code-runner progress gate (mirrors the quiz one).
+func (s *Service) CountPassedForAssignments(ctx context.Context, studentID int64, assignmentIDs []int64) (int, error) {
+	return s.repo.CountPassedForAssignments(ctx, studentID, assignmentIDs)
 }
 
 // GetMine returns the student's own submission, or ErrNotFound.

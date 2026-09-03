@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/Button";
-import { CodeEditor } from "@/components/learn/CodeEditor";
 import { SubmissionBadge } from "@/components/ui/SubmissionBadge";
+import { CodeAssignmentPanel } from "@/components/learn/CodeAssignmentPanel";
 import {
   ApiError,
   getQuizAttempts,
@@ -34,8 +34,17 @@ export function AssignmentPanel({
       />
     );
   }
+  if (assignment.assignmentType === "code") {
+    return (
+      <CodeAssignmentPanel
+        assignment={assignment}
+        initialSubmission={initialSubmission}
+        onSubmittedChange={onSubmittedChange}
+      />
+    );
+  }
   return (
-    <WrittenAssignmentPanel
+    <TextAssignmentPanel
       assignment={assignment}
       initialSubmission={initialSubmission}
       onSubmittedChange={onSubmittedChange}
@@ -152,9 +161,9 @@ function QuizAssignmentPanel({
   );
 }
 
-/* ================= text / code / project ================= */
+/* ================= text / project ================= */
 
-function WrittenAssignmentPanel({
+function TextAssignmentPanel({
   assignment,
   initialSubmission,
   onSubmittedChange,
@@ -164,15 +173,10 @@ function WrittenAssignmentPanel({
   onSubmittedChange: (submitted: boolean) => void;
 }) {
   const { t } = useLanguage();
-  const isCode = assignment.assignmentType === "code";
   const isProject = assignment.assignmentType === "project";
-  const usesCodeField = isCode;
 
   const [submission, setSubmission] = useState<Submission | null>(initialSubmission);
-  const [value, setValue] = useState<string>(
-    (usesCodeField ? initialSubmission?.code : initialSubmission?.answer) ??
-      (usesCodeField ? (assignment.starterCode ?? "") : "")
-  );
+  const [value, setValue] = useState<string>(initialSubmission?.answer ?? "");
   const [pending, setPending] = useState<null | "save" | "submit">(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -183,10 +187,7 @@ function WrittenAssignmentPanel({
   const isPassed = submission?.status === "passed";
 
   async function persist() {
-    return saveSubmissionDraft(
-      assignment.id,
-      usesCodeField ? { code: value } : { answer: value }
-    );
+    return saveSubmissionDraft(assignment.id, { answer: value });
   }
 
   async function save() {
@@ -251,41 +252,19 @@ function WrittenAssignmentPanel({
         </div>
       )}
 
-      <div className="assignment-label-row">
-        <label className="assignment-label" htmlFor={`a-${assignment.id}`}>
-          {usesCodeField ? t.learn.yourCode : t.learn.yourAnswer}
-        </label>
-        {isCode && editable && assignment.starterCode != null && (
-          <button
-            type="button"
-            className="admin-link"
-            onClick={() => setValue(assignment.starterCode ?? "")}
-            disabled={pending !== null}
-          >
-            {t.learn.resetToStarter}
-          </button>
-        )}
-      </div>
-      {isCode ? (
-        <CodeEditor
-          value={value}
-          onChange={setValue}
-          language={assignment.language ?? "plaintext"}
-          readOnly={!editable || pending !== null}
-          ariaLabel={t.learn.yourCode}
-        />
-      ) : (
-        <textarea
-          id={`a-${assignment.id}`}
-          className="assignment-input"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          disabled={!editable || pending !== null}
-          rows={5}
-          spellCheck
-          placeholder={isProject ? t.learn.projectPlaceholder : undefined}
-        />
-      )}
+      <label className="assignment-label" htmlFor={`a-${assignment.id}`}>
+        {t.learn.yourAnswer}
+      </label>
+      <textarea
+        id={`a-${assignment.id}`}
+        className="assignment-input"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        disabled={!editable || pending !== null}
+        rows={5}
+        spellCheck
+        placeholder={isProject ? t.learn.projectPlaceholder : undefined}
+      />
 
       {error && (
         <p className="auth-error" role="alert">
@@ -299,13 +278,7 @@ function WrittenAssignmentPanel({
           <Button type="button" variant="ghost" size="sm" onClick={save} disabled={pending !== null}>
             {pending === "save" ? t.learn.saving : t.learn.saveDraft}
           </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={send}
-            disabled={pending !== null}
-          >
+          <Button type="button" variant="primary" size="sm" onClick={send} disabled={pending !== null}>
             {pending === "submit" ? t.learn.submitting : t.learn.submit}
           </Button>
         </div>

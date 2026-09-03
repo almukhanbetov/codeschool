@@ -158,7 +158,16 @@ One necessary substitution: `lucide-react` no longer ships branded logo icons (I
 - **`components/teacher/TeacherReview.tsx`** — the student's code is shown in a read-only `CodeEditor` with the assignment's language; the student's text answer stays a `<pre>`.
 - **`components/admin/AdminCatalog.tsx`** — the assignment form/table gain a `language` select + column (empty = cleared to NULL).
 - New strings under `learn` (`resetToStarter`, `editorLoading`, `editorMobileNote`, `editorLanguage`, `editorReadOnly`) and `admin.fLanguage`, RU + KZ + EN. Only a `.code-editor-*` block was appended to `globals.css`.
-- No code execution: there is no "Run" button, no output pane. **`next.config.ts` is unchanged** — `@monaco-editor/react` is a normal client dependency and works with `output: "standalone"`.
+- **`next.config.ts` is unchanged** — `@monaco-editor/react` is a normal client dependency and works with `output: "standalone"`.
+
+## Code runner
+
+No new dependency this stage. Execution happens in a backend-side sandboxed service; the browser only ever calls the backend.
+
+- **`lib/api.ts`** — `runCode`, `getCodeRuns`, `getAssignmentTests`, `submitCodeForGrading`, and `adminApi.tests` (I/O test-case CRUD). Same browser client + 401-refresh-retry.
+- **`components/learn/CodeAssignmentPanel.tsx`** — `AssignmentPanel` now delegates `code` assignments here (quiz → `QuizAssignmentPanel`, text/project → `TextAssignmentPanel`). It has the Monaco editor + **▶ Run** + an **output pane** (`stdout` / `stderr` / `exit code` / `duration` with *timed out* / *truncated* badges), a collapsible **stdin** box, a **sample tests** `<details>` list (each row has its own ▶ Run that pre-fills stdin), and a **run history** `<details>` list. **Submit** auto-routes: `hasTests` → `submitCodeForGrading` + a per-test result panel (hidden tests show only ✓/✗; failed visible tests show expected vs. got + stderr); otherwise the normal teacher-review submit. `503` → a "runner unavailable" message; `409` → "too fast".
+- **`components/admin/AdminTestsEditor.tsx`** — opened from the catalog's **Tests** action on `code` assignment rows (`EntityManager` `rowExtra`): a flat list of test cases with name / stdin / expected / hidden / weight / position, add / edit / delete.
+- New strings: `data/translations.ts` → `learn` (run / output / tests / grading) and `admin` (test editor), RU + KZ + EN. Only a `.runner-*` block was appended to `globals.css`.
 
 ## Placeholder routes
 

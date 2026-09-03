@@ -33,6 +33,17 @@ func (f *fakeRepo) GetPublishedByID(_ context.Context, id int64) (Assignment, in
 	return Assignment{}, 0, ErrNotFound
 }
 
+func (f *fakeRepo) GetByID(_ context.Context, id int64) (Assignment, error) {
+	for _, as := range f.byLesson {
+		for _, a := range as {
+			if a.ID == id {
+				return a, nil
+			}
+		}
+	}
+	return Assignment{}, ErrNotFound
+}
+
 type fakeLessons struct{ courseByLesson map[int64]int64 }
 
 func (f *fakeLessons) CourseIDForLesson(_ context.Context, lessonID int64) (int64, error) {

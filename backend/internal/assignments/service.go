@@ -24,6 +24,7 @@ type repository interface {
 	ListPublishedByLesson(ctx context.Context, lessonID int64) ([]Assignment, error)
 	PublishedIDsByLesson(ctx context.Context, lessonID int64) ([]int64, error)
 	GetPublishedByID(ctx context.Context, id int64) (Assignment, int64, error)
+	GetByID(ctx context.Context, id int64) (Assignment, error)
 }
 
 type Service struct {
@@ -72,4 +73,10 @@ func (s *Service) PublishedIDsForLesson(ctx context.Context, lessonID int64) ([]
 // id, for the submissions package. ErrNotFound if it is missing/unpublished.
 func (s *Service) ResolveForSubmission(ctx context.Context, assignmentID int64) (Assignment, int64, error) {
 	return s.repo.GetPublishedByID(ctx, assignmentID)
+}
+
+// GetAnyByID returns an assignment (published or not) — for admin/authoring
+// callers (the code-runner's test editor). ErrNotFound if it does not exist.
+func (s *Service) GetAnyByID(ctx context.Context, assignmentID int64) (Assignment, error) {
+	return s.repo.GetByID(ctx, assignmentID)
 }

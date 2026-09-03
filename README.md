@@ -19,9 +19,9 @@ Go Gin :8080  (modular monolith, no ORM)
 PostgreSQL 17 :5432 (container) / :5433 (host-mapped, see below)
 ```
 
-Auth, the **student learning flow**, the **teacher flow**, the **parent flow**, the **admin panel**, and the **quiz engine** (admin-authored quizzes, server-scored student attempts, pass/fail + review, teacher/parent roll-ups) are all in place.
+Auth, the **student learning flow**, the **teacher flow**, the **parent flow**, the **admin panel**, the **quiz engine**, and the Monaco **code editor** are all in place.
 
-This stage adds a real **code editor**: `@monaco-editor/react` replaces the plain textarea for `code` assignments. Syntax highlighting with **Python / JavaScript / Go** language modes (set per assignment by the admin — new `assignments.language` column), starter code, a **Reset to starter** button, save-draft and submit-to-teacher (unchanged flow), **read-only** once submitted, **editable again** after a `failed` verdict. Small screens (or a failed Monaco load, e.g. offline) fall back to a plain code textarea. Teachers review the student's code in a read-only Monaco with the same highlighting. **No code execution yet** — code is stored, never run; the runner / sandbox is a later stage. See [What's not in this stage](#whats-not-in-this-stage).
+This stage adds the **code runner**. A dedicated, sandboxed `runner` container executes student **Python / JavaScript / Go** in isolation — no internet, non-root, read-only rootfs, dropped Linux capabilities, hard pid / memory / cpu caps, plus a per-run wall-clock timeout, `ulimit`s and output caps. From the editor the student gets a **Run** button and an output pane (stdout / stderr / exit code / duration), a stdin box, and a list of **sample tests**. Every run is recorded (run history). An admin authors **hidden test cases**; **Submit for grading** runs them all, computes a weighted score and finalizes the submission `passed` / `failed` with no teacher — the same auto-grade model as a quiz. **Still no arbitrary tooling** — one file, standard library only, stdin/stdout only. See [What's not in this stage](#whats-not-in-this-stage).
 
 ## Project structure
 
@@ -52,10 +52,11 @@ cp frontend/.env.example frontend/.env.local
 ```bash
 docker compose up -d postgres
 docker compose run --rm migrate     # applies all Goose migrations
-docker compose up --build backend frontend
+docker compose up --build backend frontend runner
 ```
 
 - Postgres is mapped to host port **5433**, not 5432 — chosen to avoid clashing with a Postgres that might already be running on the host. Containers talk to each other over the internal Docker network on the normal 5432 regardless.
+- **`runner`** is the sandboxed code-execution service (first build ~1 min — it carries python3 / nodejs / go). It sits on an **internal-only** Docker network (no internet egress), runs non-root with a read-only rootfs, every Linux capability dropped, `no-new-privileges`, and hard `pids_limit` / `mem_limit` / `cpus`. It is **not** published on a host port; the backend reaches it via `RUNNER_URL`. Omit it (or unset `RUNNER_URL`) to disable the code runner — its endpoints then return `503`.
 - Seed data is intentionally **not** part of `docker compose up` (see [Seeds](#seeds) below) — migrations create the schema, seeds are a separate, explicit, development-only step.
 
 ```bash
@@ -92,7 +93,7 @@ Open http://localhost:3000.
 
 ## Seeds
 
-`backend/seeds/dev_seed.sql` is plain SQL, run manually, never automatically — see `backend/README.md`. It creates one program ("Computer Science Kids"), one level, and 6 courses reusing the names/ages already present in `frontend/data/*.ts` where they overlapped (Scratch Junior, Python Start, Robotics Arduino, AI Junior — plus "Основы алгоритмов" and "Web Development"), with 4 modules and 5 lessons under "Python Start", one text/code assignment each on three lessons, and a fully-authored **quiz** ("Тест: Циклы Python", 5 questions, pass 70 %) on the "Цикл for" lesson.
+`backend/seeds/dev_seed.sql` is plain SQL, run manually, never automatically — see `backend/README.md`. It creates one program ("Computer Science Kids"), one level, and 6 courses reusing the names/ages already present in `frontend/data/*.ts` where they overlapped (Scratch Junior, Python Start, Robotics Arduino, AI Junior — plus "Основы алгоритмов" and "Web Development"), with 4 modules and 5 lessons under "Python Start", one text/code assignment each on three lessons, a fully-authored **quiz** ("Тест: Циклы Python", 5 questions, pass 70 %) on the "Цикл for" lesson, and two **code-runner test cases** (one visible, one hidden) on the "Hello, Kazakhstan!" Python assignment.
 
 ## API
 
@@ -167,9 +168,16 @@ POST   /api/v1/assignments/:id/quiz/attempts          start / resume an attempt
 GET    /api/v1/assignments/:id/quiz/attempts          attempt history + roll-up
 POST   /api/v1/quiz/attempts/:id/submit               {answers:[{questionId, selectedOptionIds}]}
 GET    /api/v1/quiz/attempts/:id                      own attempt (resumable / graded)
-# code editor — assignments now carry `language` (python|javascript|go|plaintext|null),
-# threaded through GET /lessons/:id/assignments, GET /teacher/submissions/:id,
-# and the admin assignment CRUD. No new endpoints; no runner.
+# code editor — assignments carry `language` (python|javascript|go|plaintext|null)
+
+# code runner — student (auth + role=student, enrolled, code assignment)
+POST   /api/v1/assignments/:id/run                    {code, stdin?}  -> stdout/stderr/exit/duration
+GET    /api/v1/assignments/:id/runs                   run history
+GET    /api/v1/assignments/:id/tests                  visible sample tests only
+POST   /api/v1/assignments/:id/code/submit            {code}  -> run all tests, auto-grade the submission
+# code runner — admin (test authoring, audited)
+GET|POST /api/v1/admin/assignments/:id/tests
+PATCH|DELETE /api/v1/admin/tests/:id
 
 # quiz engine — teacher (read-only) / admin (authoring, audited)
 GET    /api/v1/teacher/quiz/attempts/:id
@@ -245,12 +253,21 @@ PATCH|DELETE /api/v1/admin/quiz/options/:id
 - **Teacher** — the student-detail page gains a read-only **Quiz results** table (best %, attempts, passed). **Parent** — the child's course page shows the same roll-up for quiz assignments.
 - New strings live under `data/translations.ts` → `quiz` (student/teacher-facing) and `admin` (authoring), RU + KZ + EN. Only a `.quiz-*` block was added to `globals.css`; existing tokens/components are reused. Dark/Light unchanged.
 
+## Code runner on the frontend
+
+- `lib/api.ts` gains `runCode`, `getCodeRuns`, `getAssignmentTests`, `submitCodeForGrading`, and `adminApi.tests` — same browser client + 401-refresh-retry.
+- **Student** — `AssignmentPanel` splits into `CodeAssignmentPanel` for `code` assignments: the Monaco editor + a **▶ Run** button and an **output pane** (stdout / stderr / exit code / duration, plus *timed out* / *truncated* badges), a collapsible **stdin** box, a **sample tests** list (each with its own ▶ Run that fills stdin), and a **run history** list. **Submit** auto-routes: if the assignment has tests it calls `submitCodeForGrading` and shows a per-test result panel (hidden tests report only pass/fail; failed visible tests show expected vs. got); otherwise it's the normal teacher-review submit. Read-only after submit, editable again on `failed`.
+- **Admin** — the catalog's assignment table shows a **Tests** action on `code` rows, opening `AdminTestsEditor`: a flat list of I/O test cases with name / stdin / expected / hidden / weight / position, add / edit / delete.
+- New strings under `data/translations.ts` → `learn` (run/output/tests) and `admin` (test editor), RU + KZ + EN. Only a `.runner-*` block was added to `globals.css`.
+
 Frontend route guards are a **UX** boundary; the backend authorization on every protected API call is the real security boundary.
 
 **Security trade-off note:** the refresh token is an HttpOnly, `SameSite=Lax` cookie scoped to `/api/v1/auth` (never in `localStorage`, never in a response body), and the access token is memory-only — so neither is readable by page JavaScript (XSS can't exfiltrate them). `Secure` is off in local development (plain HTTP) and on in production. Because the cookie lives on the API origin, Next.js middleware/`proxy` can't read it, so route protection is client-side only (see above).
 
 ## What's not in this stage
 
-**Code execution / sandboxing** (the code *runner* — the **next** stage; the Monaco editor itself landed this stage), AI review, certificates, payments, notifications, file storage (MinIO), analytics. Student code is stored, never run — no "Run" button. Written submissions keep **one current row** per assignment; quizzes keep a full attempt history. A `failed` verdict does not roll back a completed lesson. The parent flow is read-only. The admin panel: hard deletes only for catalog/user rows (cascading, no undo), no bulk import, no per-field audit diff; catalog text is still not per-language. Monaco loads from a CDN at runtime — offline / CDN-blocked clients get the plain-textarea fallback (also used on touch / narrow screens). No editor autosave, no linting, no multi-file, no diff view, no format-on-save.
+AI review, certificates, payments, notifications, file storage (MinIO), analytics. A `failed` verdict does not roll back a completed lesson. The parent flow is read-only. The admin panel: hard deletes only for catalog/user rows, no bulk import, no per-field audit diff; catalog text is still not per-language. Monaco loads from a CDN at runtime — offline clients get the plain-textarea fallback (also used on touch / narrow screens).
 
-**Quiz limitations.** No code quiz, no free-text auto-grading, no question snapshots (editing a question changes how past attempts render), no shuffle, no partial credit, no timed quizzes, no question bank, no random quiz generation. A question/option that already appears in a submitted attempt is deactivated instead of hard-deleted, but its text stays editable. Refresh-token cleanup and login rate limiting remain future hardening. Deferred to later stages — see `backend/README.md`'s own scope note.
+**Code-runner limitations.** Python / JavaScript / Go only; **one file**, standard library only (network is off), stdin/stdout only — no command-line args, no interactive input, no multi-file projects, no external packages. Isolation is container + `cap_drop ALL` + non-root + read-only rootfs + no-network + `ulimit`s + wall-clock timeout + output caps — solid for a **trusted classroom**, not a gVisor/seccomp/VM jail for anonymous public code. `go run` compiles then runs (~250 ms warm, shared tmpfs build cache). Output matching is exact after trimming trailing whitespace — no regex / float tolerance / custom checkers. Hidden-test secrecy is best-effort (a student can still probe via free runs). The per-student run throttle is in-memory per API instance. The runner needs its Docker image (python/node/go); without it, `RUNNER_URL` unset → the runner endpoints return `503` and the rest of the app is unaffected.
+
+**Quiz limitations.** No question snapshots, no shuffle, no partial credit, no timed quizzes, no question bank. Refresh-token cleanup and login rate limiting remain future hardening. See `backend/README.md`'s own scope note.

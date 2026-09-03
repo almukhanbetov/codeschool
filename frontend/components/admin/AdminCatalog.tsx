@@ -5,6 +5,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { adminApi } from "@/lib/api";
 import { EntityManager, type ColumnDef, type FieldDef } from "@/components/admin/EntityManager";
 import { AdminQuizEditor } from "@/components/admin/AdminQuizEditor";
+import { AdminTestsEditor } from "@/components/admin/AdminTestsEditor";
 import type {
   AdminAssignment,
   AdminCourse,
@@ -21,6 +22,7 @@ export function AdminCatalog() {
   const a = t.admin;
   const [crumb, setCrumb] = useState<Crumb>({});
   const [quizFor, setQuizFor] = useState<AdminAssignment | null>(null);
+  const [testsFor, setTestsFor] = useState<AdminAssignment | null>(null);
 
   const boolCol = (get: (r: { isPublished: boolean }) => boolean): ColumnDef<{ isPublished: boolean }> => ({
     label: a.fPublished,
@@ -326,12 +328,21 @@ export function AdminCatalog() {
               >
                 {a.quizConfigure}
               </button>
+            ) : r.assignmentType === "code" ? (
+              <button
+                type="button"
+                className="admin-link admin-link-strong"
+                onClick={() => setTestsFor(r)}
+              >
+                {a.manageTests}
+              </button>
             ) : null
           }
         />
       )}
 
       {quizFor && <AdminQuizEditor assignment={quizFor} onClose={() => setQuizFor(null)} />}
+      {testsFor && <AdminTestsEditor assignment={testsFor} onClose={() => setTestsFor(null)} />}
     </>
   );
 }

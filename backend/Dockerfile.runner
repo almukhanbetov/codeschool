@@ -1,0 +1,37 @@
+# --- build the runner binary ---
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/runner ./cmd/runner
+
+# --- runtime image with the language toolchains ---
+# This container executes untrusted student code. Compose layers on the real
+# isolation (non-root, no egress, cap_drop ALL, no-new-privileges, read-only
+# rootfs, tmpfs scratch, pids/mem/cpu caps); this image just carries python3,
+# node and go plus the runner binary, and runs as an unprivileged user.
+FROM golang:1.26-alpine
+RUN apk add --no-cache python3 nodejs libstdc++ \
+    && adduser -D -u 10001 coderunner
+
+COPY --from=build /out/runner /usr/local/bin/runner
+
+ENV PORT=8090 \
+    GOTOOLCHAIN=local \
+    GOFLAGS=-mod=mod \
+    SANDBOX_GOCACHE=/gocache \
+    SANDBOX_SCRATCH=/work
+
+# Bake a warm Go build cache for the std lib so the first `go run` isn't slow.
+# The runner copies /opt/gocache-warm -> the writable tmpfs at /gocache on
+# startup (the rootfs is read-only at runtime).
+RUN mkdir -p /opt/warm && \
+    printf 'package main\nimport ("fmt";_ "encoding/json";_ "strings";_ "bufio";_ "os";_ "sort";_ "math";_ "strconv")\nfunc main(){ fmt.Println("warm") }\n' > /opt/warm/main.go && \
+    HOME=/tmp GOCACHE=/opt/gocache-warm go run /opt/warm/main.go && \
+    rm -rf /opt/warm && \
+    chmod -R a+rX /opt/gocache-warm
+
+USER coderunner
+EXPOSE 8090
+ENTRYPOINT ["/usr/local/bin/runner"]

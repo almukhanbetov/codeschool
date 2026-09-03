@@ -25,10 +25,18 @@ type assignmentGate interface {
 	PublishedIDsForLesson(ctx context.Context, lessonID int64) ([]int64, error)
 }
 
-// submissionGate counts a student's non-draft submissions among a set of
-// assignments. Satisfied by *submissions.Service.
+// submissionGate counts a student's non-draft / passed submissions among a
+// set of assignments. Satisfied by *submissions.Service.
 type submissionGate interface {
 	CountNonDraftForAssignments(ctx context.Context, studentID int64, assignmentIDs []int64) (int, error)
+	CountPassedForAssignments(ctx context.Context, studentID int64, assignmentIDs []int64) (int, error)
+}
+
+// codeTestGate distinguishes test-graded `code` assignments (spec §7): a
+// lesson with one can only be completed once the student has a *passing*
+// auto-graded submission, like a quiz. Satisfied by *runs.Service.
+type codeTestGate interface {
+	AssignmentIDsWithTests(ctx context.Context, assignmentIDs []int64) ([]int64, error)
 }
 
 // quizGate distinguishes quiz assignments from the rest and reports how many
@@ -61,6 +69,7 @@ type Service struct {
 	assignments assignmentGate
 	submissions submissionGate
 	quizzes     quizGate
+	codeTests   codeTestGate
 }
 
 func NewService(
@@ -71,6 +80,7 @@ func NewService(
 	assignments assignmentGate,
 	submissions submissionGate,
 	quizzes quizGate,
+	codeTests codeTestGate,
 ) *Service {
 	return &Service{
 		repo:        repo,
@@ -80,6 +90,7 @@ func NewService(
 		assignments: assignments,
 		submissions: submissions,
 		quizzes:     quizzes,
+		codeTests:   codeTests,
 	}
 }
 
@@ -133,24 +144,50 @@ func (s *Service) CompleteLesson(ctx context.Context, studentID, lessonID int64)
 		if err != nil {
 			return CompleteLessonResponse{}, err
 		}
-		isQuiz := make(map[int64]bool, len(quizIDs))
+		done := make(map[int64]bool, len(assignmentIDs))
 		for _, id := range quizIDs {
-			isQuiz[id] = true
+			done[id] = true
 		}
-		var nonQuizIDs []int64
-		for _, id := range assignmentIDs {
-			if !isQuiz[id] {
-				nonQuizIDs = append(nonQuizIDs, id)
+
+		// Test-graded `code` assignments behave like quizzes: a *passing*
+		// auto-graded submission is required (spec §7).
+		codeTestIDs, err := s.codeTests.AssignmentIDsWithTests(ctx, assignmentIDs)
+		if err != nil {
+			return CompleteLessonResponse{}, err
+		}
+		var testCodeNeeded []int64
+		for _, id := range codeTestIDs {
+			if !done[id] { // a quiz can't also be test-graded, but be safe
+				testCodeNeeded = append(testCodeNeeded, id)
+				done[id] = true
 			}
 		}
 
-		// Non-quiz assignments: a non-draft submission for each (unchanged).
-		if len(nonQuizIDs) > 0 {
-			done, err := s.submissions.CountNonDraftForAssignments(ctx, studentID, nonQuizIDs)
+		var plainIDs []int64
+		for _, id := range assignmentIDs {
+			if !done[id] {
+				plainIDs = append(plainIDs, id)
+			}
+		}
+
+		// Plain assignments (text / code-without-tests / project): a non-draft
+		// submission for each (unchanged, spec §21).
+		if len(plainIDs) > 0 {
+			n, err := s.submissions.CountNonDraftForAssignments(ctx, studentID, plainIDs)
 			if err != nil {
 				return CompleteLessonResponse{}, err
 			}
-			if done < len(nonQuizIDs) {
+			if n < len(plainIDs) {
+				return CompleteLessonResponse{}, ErrAssignmentIncomplete
+			}
+		}
+		// Test-graded code: a passing submission for each.
+		if len(testCodeNeeded) > 0 {
+			passed, err := s.submissions.CountPassedForAssignments(ctx, studentID, testCodeNeeded)
+			if err != nil {
+				return CompleteLessonResponse{}, err
+			}
+			if passed < len(testCodeNeeded) {
 				return CompleteLessonResponse{}, ErrAssignmentIncomplete
 			}
 		}

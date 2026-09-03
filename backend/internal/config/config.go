@@ -17,6 +17,11 @@ type Config struct {
 	JWTSecret     string
 	JWTAccessTTL  time.Duration
 	JWTRefreshTTL time.Duration
+
+	// RunnerURL is the base URL of the code-execution service (e.g.
+	// http://runner:8090). Empty disables the code runner — its endpoints
+	// then return 503.
+	RunnerURL string
 }
 
 func Load() (*Config, error) {
@@ -53,6 +58,7 @@ func Load() (*Config, error) {
 		JWTSecret:          jwtSecret,
 		JWTAccessTTL:       accessTTL,
 		JWTRefreshTTL:      refreshTTL,
+		RunnerURL:          strings.TrimRight(os.Getenv("RUNNER_URL"), "/"),
 	}, nil
 }
 

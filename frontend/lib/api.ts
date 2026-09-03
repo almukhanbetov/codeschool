@@ -61,6 +61,11 @@ import type {
   AdminQuizQuestion,
   AdminQuizOption,
   QuizDeleteResult,
+  CodeRunResult,
+  CodeRunHistoryItem,
+  AssignmentTestsResponse,
+  CodeGradeResult,
+  AdminAssignmentTest,
 } from "@/types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
@@ -378,6 +383,42 @@ export function getTeacherQuizAttempt(attemptId: number): Promise<QuizResult> {
 }
 
 /* =========================================================
+   Code runner — student side. Execution happens in a sandboxed
+   service; the client only ever sees stdout/stderr/exit code.
+   ========================================================= */
+
+export function runCode(
+  assignmentId: number,
+  code: string,
+  stdin: string
+): Promise<CodeRunResult> {
+  return browserFetch<CodeRunResult>(`/assignments/${assignmentId}/run`, {
+    method: "POST",
+    body: JSON.stringify({ code, stdin }),
+    auth: true,
+  });
+}
+
+export function getCodeRuns(assignmentId: number): Promise<CodeRunHistoryItem[]> {
+  return browserFetch<CodeRunHistoryItem[]>(`/assignments/${assignmentId}/runs`, { auth: true });
+}
+
+export function getAssignmentTests(assignmentId: number): Promise<AssignmentTestsResponse> {
+  return browserFetch<AssignmentTestsResponse>(`/assignments/${assignmentId}/tests`, { auth: true });
+}
+
+export function submitCodeForGrading(
+  assignmentId: number,
+  code: string
+): Promise<CodeGradeResult> {
+  return browserFetch<CodeGradeResult>(`/assignments/${assignmentId}/code/submit`, {
+    method: "POST",
+    body: JSON.stringify({ code }),
+    auth: true,
+  });
+}
+
+/* =========================================================
    Teacher flow — all browser-side, all require a teacher token.
    ========================================================= */
 
@@ -649,5 +690,25 @@ export const adminApi = {
         method: "DELETE",
         auth: true,
       }),
+  },
+
+  // Code assignment I/O test cases (visible + hidden). Audited server-side.
+  tests: {
+    list: (assignmentId: number) =>
+      browserFetch<AdminAssignmentTest[]>(`/admin/assignments/${assignmentId}/tests`, { auth: true }),
+    create: (assignmentId: number, body: unknown) =>
+      browserFetch<AdminAssignmentTest>(`/admin/assignments/${assignmentId}/tests`, {
+        method: "POST",
+        body: JSON.stringify(body),
+        auth: true,
+      }),
+    update: (testId: number, body: unknown) =>
+      browserFetch<AdminAssignmentTest>(`/admin/tests/${testId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+        auth: true,
+      }),
+    remove: (testId: number) =>
+      browserFetch<unknown>(`/admin/tests/${testId}`, { method: "DELETE", auth: true }),
   },
 };

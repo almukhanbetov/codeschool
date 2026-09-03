@@ -152,6 +152,45 @@ func (r *Repository) ApplyReview(ctx context.Context, id int64, score *int, feed
 	return s, nil
 }
 
+// AutoGrade transitions an editable submission (`draft` or `failed`) straight
+// to a final verdict (`passed` / `failed`) with a machine-computed score +
+// summary, stamping submitted_at and checked_at. Used by the code-runner's
+// hidden-test grader (spec §7) — no teacher. 0 rows → ErrLocked.
+func (r *Repository) AutoGrade(ctx context.Context, id int64, code *string, score *int, feedback *string, status string) (Submission, error) {
+	row := r.pool.QueryRow(ctx, `
+		UPDATE submissions
+		SET code = $2, status = $3, score = $4, teacher_feedback = $5,
+		    submitted_at = NOW(), checked_at = NOW(), updated_at = NOW()
+		WHERE id = $1 AND status IN ('draft', 'failed')
+		RETURNING `+columns, id, code, status, score, feedback)
+
+	s, err := scanSubmission(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Submission{}, ErrLocked
+	}
+	if err != nil {
+		return Submission{}, fmt.Errorf("auto-grade submission: %w", err)
+	}
+	return s, nil
+}
+
+// CountPassedForAssignments counts the student's `passed` submissions among a
+// set of assignment ids.
+func (r *Repository) CountPassedForAssignments(ctx context.Context, studentID int64, assignmentIDs []int64) (int, error) {
+	if len(assignmentIDs) == 0 {
+		return 0, nil
+	}
+	var n int
+	err := r.pool.QueryRow(ctx, `
+		SELECT count(*) FROM submissions
+		WHERE student_id = $1 AND assignment_id = ANY($2) AND status = 'passed'
+	`, studentID, assignmentIDs).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count passed submissions: %w", err)
+	}
+	return n, nil
+}
+
 // CountNonDraftForAssignments counts how many of the given assignments the
 // student has a non-draft submission for — the lesson-completion gate. A
 // `failed` submission still counts (they DID submit; spec §31 keeps the

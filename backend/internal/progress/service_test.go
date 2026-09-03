@@ -61,7 +61,10 @@ func (f *fakeAssignments) PublishedIDsForLesson(_ context.Context, l int64) ([]i
 	return f.ids[l], nil
 }
 
-type fakeSubs struct{ nonDraft map[int64]int }
+type fakeSubs struct {
+	nonDraft map[int64]int
+	passed   map[int64]bool
+}
 
 func (f *fakeSubs) CountNonDraftForAssignments(_ context.Context, s int64, ids []int64) (int, error) {
 	n := 0
@@ -69,6 +72,28 @@ func (f *fakeSubs) CountNonDraftForAssignments(_ context.Context, s int64, ids [
 		n += f.nonDraft[id]
 	}
 	return n, nil
+}
+func (f *fakeSubs) CountPassedForAssignments(_ context.Context, s int64, ids []int64) (int, error) {
+	n := 0
+	for _, id := range ids {
+		if f.passed[id] {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// fakeCodeTests: ids that are test-graded code assignments.
+type fakeCodeTests struct{ withTests map[int64]bool }
+
+func (f *fakeCodeTests) AssignmentIDsWithTests(_ context.Context, ids []int64) ([]int64, error) {
+	var out []int64
+	for _, id := range ids {
+		if f.withTests[id] {
+			out = append(out, id)
+		}
+	}
+	return out, nil
 }
 
 // fakeQuizzes: quizIDs marks which assignment ids are quizzes; passed marks
@@ -104,9 +129,10 @@ func build() (*Service, *fakeRepo, *fakeEnroll, *fakeAssignments, *fakeSubs, *fa
 		status:   map[[2]int64]string{{5, 3}: "active"},
 	}
 	as := &fakeAssignments{ids: map[int64][]int64{}}
-	su := &fakeSubs{nonDraft: map[int64]int{}}
+	su := &fakeSubs{nonDraft: map[int64]int{}, passed: map[int64]bool{}}
 	qz := &fakeQuizzes{quizIDs: map[int64]bool{}, passed: map[int64]bool{}}
-	svc := NewService(repo, &fakeLessons{m: map[int64]int64{7: 3}}, en, en, as, su, qz)
+	ct := &fakeCodeTests{withTests: map[int64]bool{}}
+	svc := NewService(repo, &fakeLessons{m: map[int64]int64{7: 3}}, en, en, as, su, qz, ct)
 	return svc, repo, en, as, su, qz
 }
 

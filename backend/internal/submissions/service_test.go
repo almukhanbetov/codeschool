@@ -98,6 +98,31 @@ func (f *fakeRepo) ApplyReview(_ context.Context, id int64, score *int, feedback
 	return *s, nil
 }
 
+func (f *fakeRepo) AutoGrade(_ context.Context, id int64, code *string, score *int, feedback *string, status string) (Submission, error) {
+	s := f.find(id)
+	if s == nil || !isEditable(s.Status) {
+		return Submission{}, ErrLocked
+	}
+	now := time.Now()
+	s.Code = code
+	s.Status = status
+	s.Score = score
+	s.TeacherFeedback = feedback
+	s.SubmittedAt = &now
+	s.CheckedAt = &now
+	return *s, nil
+}
+
+func (f *fakeRepo) CountPassedForAssignments(_ context.Context, studentID int64, ids []int64) (int, error) {
+	n := 0
+	for _, id := range ids {
+		if s, ok := f.rows[[2]int64{studentID, id}]; ok && s.Status == StatusPassed {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (f *fakeRepo) CountNonDraftForAssignments(_ context.Context, studentID int64, ids []int64) (int, error) {
 	n := 0
 	for _, id := range ids {

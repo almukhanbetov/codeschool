@@ -28,6 +28,7 @@ import (
 	"codeschool/backend/internal/programs"
 	"codeschool/backend/internal/progress"
 	"codeschool/backend/internal/quizzes"
+	"codeschool/backend/internal/runs"
 	"codeschool/backend/internal/submissions"
 	"codeschool/backend/internal/users"
 )
@@ -118,10 +119,25 @@ func run() error {
 	quizzesHandler := quizzes.NewHandler(quizzesService)
 	quizzesAdminHandler := quizzes.NewAdminHandler(quizzesAdminService)
 
+	// Code runner: forwards code to the sandboxed `runner` service, records
+	// history, serves visible tests, auto-grades against hidden tests. The
+	// runner is optional — if RUNNER_URL is unset the endpoints return 503.
+	runsRepo := runs.NewRepository(pool)
+	runnerClient := runs.NewRunnerClient(cfg.RunnerURL)
+	runsService := runs.NewService(runsRepo, runnerClient, assignmentsService, enrollmentsService, submissionsService)
+	runsAdminService := runs.NewAdminService(runsRepo, assignmentsService)
+	runsHandler := runs.NewHandler(runsService)
+	runsAdminHandler := runs.NewAdminHandler(runsAdminService)
+	if cfg.RunnerURL == "" {
+		log.Println("code runner disabled (RUNNER_URL not set)")
+	} else {
+		log.Printf("code runner enabled: %s", cfg.RunnerURL)
+	}
+
 	progressRepo := progress.NewRepository(pool)
 	progressService := progress.NewService(
 		progressRepo, lessonsService, enrollmentsService, enrollmentsService,
-		assignmentsService, submissionsService, quizzesService,
+		assignmentsService, submissionsService, quizzesService, runsService,
 	)
 	progressHandler := progress.NewHandler(progressService)
 
@@ -164,6 +180,7 @@ func run() error {
 	submissions.RegisterRoutes(student, submissionsHandler)
 	progress.RegisterRoutes(student, progressHandler)
 	quizzes.RegisterStudentRoutes(student, quizzesHandler)
+	runs.RegisterStudentRoutes(student, runsHandler)
 
 	// Teacher-only endpoints — valid access token + role == "teacher".
 	teacher := protected.Group("")
@@ -182,6 +199,7 @@ func run() error {
 	adminGroup.Use(auth.RequireRole("admin"))
 	admin.RegisterRoutes(adminGroup, adminHandler)
 	quizzes.RegisterAdminRoutes(adminGroup, quizzesAdminHandler)
+	runs.RegisterAdminRoutes(adminGroup, runsAdminHandler)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

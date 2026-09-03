@@ -226,6 +226,18 @@ VALUES
         0, 1, TRUE
     );
 
+-- ---------- Code runner seed: I/O tests for "Hello, Kazakhstan!" ----------
+-- Cascades off the assignment deleted above, so this re-inserts a fresh set.
+INSERT INTO assignment_tests (assignment_id, name, stdin, expected_stdout, is_hidden, weight, position)
+SELECT a.id, 'Печатает приветствие', '', 'Hello, Kazakhstan!', FALSE, 1, 1
+FROM assignments a JOIN lessons l ON l.id = a.lesson_id AND l.slug = 'pervaya-komanda-print'
+WHERE a.assignment_type = 'code';
+
+INSERT INTO assignment_tests (assignment_id, name, stdin, expected_stdout, is_hidden, weight, position)
+SELECT a.id, 'Точное совпадение (скрытый)', '', 'Hello, Kazakhstan!', TRUE, 1, 2
+FROM assignments a JOIN lessons l ON l.id = a.lesson_id AND l.slug = 'pervaya-komanda-print'
+WHERE a.assignment_type = 'code';
+
 -- ---------- Quiz engine seed: "Тест: Циклы Python" ----------
 -- quiz_questions / quiz_options / quiz_settings cascade off the assignment
 -- deleted above, so this always inserts a fresh set (spec §73, §74).

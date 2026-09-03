@@ -334,6 +334,27 @@ export interface LearnTranslations {
   editorMobileNote: string;
   editorLanguage: string;
   editorReadOnly: string;
+  run: string;
+  running: string;
+  runOutput: string;
+  noOutput: string;
+  exitCode: string;
+  stdinLabel: string;
+  stdinHint: string;
+  sampleTests: string;
+  runHistory: string;
+  runnerUnavailable: string;
+  runTimedOut: string;
+  outputTruncated: string;
+  submitForGrading: string;
+  grading: string;
+  gradeResult: string;
+  testsPassed: string;
+  hiddenTest: string;
+  expectedLabel: string;
+  gotLabel: string;
+  autoGraded: string;
+  runThrottled: string;
   loading: string;
   loadError: string;
   notEnrolled: string;
@@ -583,6 +604,17 @@ export interface AdminTranslations {
   quizMultipleChoice: string;
   quizTrueFalse: string;
   quizDeactivatedNote: string;
+  // code test cases
+  manageTests: string;
+  testsEditorTitle: string;
+  newTest: string;
+  fTestName: string;
+  fTestStdin: string;
+  fTestExpected: string;
+  fTestHidden: string;
+  fTestWeight: string;
+  testHiddenBadge: string;
+  testsNotCode: string;
 }
 
 export interface QuizTranslations {
@@ -1295,6 +1327,85 @@ export interface AdminAssignment {
   points: number;
   position: number;
   isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* ---- Code runner (backend/internal/runs) ---- */
+
+export type CodeRunStatus = "ok" | "error" | "timeout" | "runner_error";
+
+export interface CodeRunResult {
+  runId: number;
+  language: string;
+  status: CodeRunStatus;
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  timedOut: boolean;
+  truncated: boolean;
+  durationMs: number | null;
+  createdAt: string;
+}
+
+export interface CodeRunHistoryItem {
+  runId: number;
+  kind: "run" | "grade";
+  status: CodeRunStatus;
+  exitCode: number | null;
+  durationMs: number | null;
+  stdout: string;
+  stderr: string;
+  createdAt: string;
+}
+
+export interface VisibleTest {
+  id: number;
+  name: string;
+  stdin: string;
+  expectedStdout: string;
+}
+
+export interface AssignmentTestsResponse {
+  hasTests: boolean;
+  total: number;
+  visible: VisibleTest[];
+}
+
+export interface CodeTestOutcome {
+  testId: number;
+  name: string;
+  hidden: boolean;
+  passed: boolean;
+  timedOut: boolean;
+  stdin?: string;
+  expected?: string;
+  got?: string;
+  stderr?: string;
+}
+
+export interface CodeGradeResult {
+  submissionId: number;
+  status: "passed" | "failed";
+  passed: boolean;
+  score: number | null;
+  points: number;
+  percent: number;
+  testsPassed: number;
+  testsTotal: number;
+  feedback: string;
+  outcomes: CodeTestOutcome[];
+}
+
+export interface AdminAssignmentTest {
+  id: number;
+  assignmentId: number;
+  name: string;
+  stdin: string;
+  expectedStdout: string;
+  isHidden: boolean;
+  weight: number;
+  position: number;
   createdAt: string;
   updatedAt: string;
 }
