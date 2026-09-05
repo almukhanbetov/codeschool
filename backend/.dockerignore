@@ -1,3 +1,26 @@
+# Build context = ./backend. Keep out everything the image build does not need.
+# Do NOT exclude: go.mod, go.sum, cmd/, internal/ (incl. embedded *.ttf fonts),
+# migrations/.
 .git
+.gitignore
 *.md
+
+# dev-only SQL seeds (not used by the build or at runtime)
 seeds
+
+# local env / secrets
+.env
+.env.*
+!.env.example
+
+# build output / local artifacts
+api
+dist/
+*.test
+*.out
+coverage.txt
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/

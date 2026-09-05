@@ -1,0 +1,19 @@
+# Repo-root .dockerignore. The compose build contexts are ./backend and
+# ./frontend (each has its own .dockerignore); this file applies only if a
+# build ever uses the repo root as context. Keep it conservative.
+.git
+.gitignore
+.github
+**/node_modules
+**/.next
+**/dist
+**/*.log
+.env
+.env.*
+!.env.example
+!**/.env.example
+.claude
+.idea
+.vscode
+.DS_Store
+*.pem

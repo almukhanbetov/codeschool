@@ -66,6 +66,71 @@ docker compose exec -T postgres psql -U codeschool -d codeschool < backend/seeds
 docker compose exec -T postgres psql -U codeschool -d codeschool < backend/seeds/dev_seed.sql
 ```
 
+## Production (Docker)
+
+`docker-compose.prod.yml` is a separate, additive stack — `docker compose up -d`
+(dev) keeps working untouched. Differences from dev: images run **non-root**,
+`APP_ENV=production` (gin ReleaseMode + `Secure` refresh cookie), Postgres and
+the runner are **never published on a host port**, no dev env defaults (every
+required variable must be set or the stack refuses to start), and a persistent
+named volume for Postgres data.
+
+**Not covered here (later stages): VPS, Nginx/TLS, DNS, GitHub Actions, GHCR, backups, monitoring.**
+
+### Required environment
+
+Put these in a gitignored `.env` (see the PRODUCTION section of `.env.example`).
+Values here are illustrative — generate real secrets (`openssl rand -hex 48`).
+
+| Variable | Purpose |
+| --- | --- |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Postgres init — use a strong password, not the dev one |
+| `DATABASE_URL` | `postgres://<user>:<password>@postgres:5432/<db>?sslmode=disable` (never leaves the internal network) |
+| `JWT_SECRET` | signs HS256 access tokens (refresh tokens are hashed random strings — there is no separate refresh secret) |
+| `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL` | optional, default `15m` / `720h` |
+| `CORS_ALLOWED_ORIGINS` | the public site origin, e.g. `https://codeschool.example.com` |
+| `PUBLIC_BASE_URL` | absolute site URL used for certificate verification links |
+| `NEXT_PUBLIC_BROWSER_API_URL` | API base as seen from the browser, e.g. `https://codeschool.example.com/api/v1` (baked into the frontend bundle at **build** time) |
+| `NEXT_PUBLIC_API_URL` | optional, server-to-server API base (default `http://backend:8080/api/v1`) |
+| `RUNNER_URL` | optional (default `http://runner:8090`); unset disables the code runner |
+| `FRONTEND_PORT`, `BACKEND_PORT` | optional host ports for local testing (default `3000` / `8080`) |
+| `BACKEND_IMAGE`, `FRONTEND_IMAGE`, `RUNNER_IMAGE` | optional; set to GHCR refs in a later stage to skip local builds |
+
+### Build, migrate, start
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env config      # validate
+docker compose -f docker-compose.prod.yml --env-file .env build
+
+docker compose -f docker-compose.prod.yml --env-file .env up -d postgres
+docker compose -f docker-compose.prod.yml --env-file .env run --rm migrate   # goose up only — never down
+docker compose -f docker-compose.prod.yml --env-file .env up -d runner backend frontend
+```
+
+Startup order is enforced by health-aware dependencies (no fixed sleeps):
+**postgres (healthy) → migrate (completed) → backend (healthy) → frontend**.
+A failed migration exits non-zero and blocks the backend.
+
+### Operate
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env ps           # status + health
+docker compose -f docker-compose.prod.yml --env-file .env logs -f backend   # logs (stdout/stderr)
+curl -fsS http://localhost:8080/health/ready                           # backend readiness (DB check)
+docker compose -f docker-compose.prod.yml --env-file .env down         # stop (keeps the data volume)
+```
+
+> **Reset warning:** `down -v` **deletes the `postgres_data` volume** — all
+> users, courses, progress and certificates are lost. Omit `-v` to keep data.
+
+### Ports behind Nginx (later stage)
+
+Only the frontend (and the API path) should be reachable from the internet.
+When Nginx is added: **remove the `backend` `ports:` block** (Nginx proxies
+`/api` → `backend:8080` over the Docker network), and keep/narrow the
+`frontend` `ports:` block to localhost. Postgres and the runner already have
+no published port.
+
 ## Run locally (no Docker)
 
 ```bash

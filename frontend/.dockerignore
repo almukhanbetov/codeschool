@@ -1,5 +1,20 @@
+# Build context = ./frontend. node_modules is reinstalled with `npm ci`,
+# .next is rebuilt. Do NOT exclude package.json / package-lock.json / source.
 node_modules
 .next
+out
 .git
+.gitignore
 *.md
-.env*.local
+
+# local env / secrets (NEXT_PUBLIC_* come in as build args, not files)
+.env
+.env.*
+!.env.example
+
+# logs / editor / OS
+npm-debug.log*
+*.tsbuildinfo
+.DS_Store
+.idea/
+.vscode/

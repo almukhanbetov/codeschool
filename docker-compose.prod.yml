@@ -1,0 +1,188 @@
+# CODESCHOOL — production Docker Compose.
+#
+# Additive to docker-compose.yml (dev). Different project name -> its own
+# network + its own `postgres_data` volume, so `docker compose up -d` (dev)
+# keeps working untouched.
+#
+# Usage (local production test):
+#   docker compose -f docker-compose.prod.yml --env-file .env config
+#   docker compose -f docker-compose.prod.yml --env-file .env build
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d postgres
+#   docker compose -f docker-compose.prod.yml --env-file .env run --rm migrate
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d runner backend frontend
+#
+# `.env` must define the required variables — see .env.example (PRODUCTION
+# section). Never commit a real .env (it is gitignored).
+#
+# Registry swap (Stage 2): every app service has both `build:` and `image:`.
+# Once images are pushed to GHCR, set BACKEND_IMAGE / FRONTEND_IMAGE /
+# RUNNER_IMAGE to `ghcr.io/<org>/<name>:<tag>` and drop the `build:` blocks —
+# no other restructuring needed.
+
+name: codeschool-prod
+
+services:
+  # ---------------------------------------------------------------------------
+  # Postgres — internal only. NOT published on a host port. Reachable solely
+  # from the `internal` network (backend, migrate).
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # migrate — one-shot Goose "up". Reuses the backend image. No restart policy
+  # (it is meant to exit). Only forward ("up") migrations run — never `down`.
+  # `run --rm migrate` exits non-zero on failure; dependents wait on
+  # service_completed_successfully so a failed migration blocks the backend.
+  # ---------------------------------------------------------------------------
+  migrate:
+    build:
+      context: ./backend
+    image: ${BACKEND_IMAGE:-codeschool-backend:local}
+    entrypoint: ["goose", "-dir", "migrations", "postgres"]
+    command: ["${DATABASE_URL:?DATABASE_URL is required}", "up"]
+    restart: "no"
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # runner — sandboxed execution of untrusted student code. Internal-only
+  # network (no egress), non-root image, every capability dropped,
+  # no-new-privileges, read-only rootfs with tmpfs scratch, hard pid/mem/cpu
+  # caps. NOT published on a host port. Per-execution wall-clock timeout +
+  # ulimits + output caps live in the runner binary / sandbox package.
+  # ---------------------------------------------------------------------------
+  runner:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.runner
+    image: ${RUNNER_IMAGE:-codeschool-runner:local}
+    restart: unless-stopped
+    environment:
+      PORT: 8090
+    networks:
+      - sandbox
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /work:exec,size=512m,mode=1777
+      - /gocache:size=256m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 512m
+    cpus: "1.5"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8090/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # backend — Go API. Talks to postgres (internal) and runner (sandbox).
+  #
+  # PORT 8080 is published below ONLY so the local production test can hit the
+  # API from the host browser (NEXT_PUBLIC_BROWSER_API_URL). In a real
+  # deployment Nginx terminates TLS and proxies /api -> backend:8080 over the
+  # Docker network, and THIS `ports:` block must be removed (Stage 2).
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+    image: ${BACKEND_IMAGE:-codeschool-backend:local}
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      PORT: 8080
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-720h}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?PUBLIC_BASE_URL is required}
+      RUNNER_URL: ${RUNNER_URL:-http://runner:8090}
+    ports:
+      # LOCAL PRODUCTION TEST ONLY — remove when deploying behind Nginx.
+      - "${BACKEND_PORT:-8080}:8080"
+    networks:
+      - internal
+      - sandbox
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      runner:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # frontend — Next.js standalone server (`node server.js`), non-root.
+  #
+  # Port 3000 is published so the app is reachable for the local production
+  # test. In a real deployment Nginx proxies / -> frontend:3000 over the
+  # Docker network; keep or narrow this `ports:` block per the Nginx design
+  # in Stage 2.
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked into the client bundle at build time (public values, not secrets).
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:8080/api/v1}
+        NEXT_PUBLIC_BROWSER_API_URL: ${NEXT_PUBLIC_BROWSER_API_URL:?NEXT_PUBLIC_BROWSER_API_URL is required}
+    image: ${FRONTEND_IMAGE:-codeschool-frontend:local}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - internal
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+networks:
+  # App traffic: frontend <-> backend <-> postgres.
+  internal:
+    driver: bridge
+  # Sandbox: backend <-> runner only, NO internet egress (student code cannot
+  # phone home).
+  sandbox:
+    internal: true
+
+volumes:
+  postgres_data:
