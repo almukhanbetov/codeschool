@@ -13,6 +13,7 @@ const SECTIONS = [
   { href: "/admin/links", key: "navLinks" as const },
   { href: "/admin/academy", key: "navAcademy" as const },
   { href: "/admin/certificates", key: "navCertificates" as const },
+  { href: "/admin/support", key: "navSupport" as const },
   { href: "/admin/audit", key: "navAudit" as const },
 ];
 

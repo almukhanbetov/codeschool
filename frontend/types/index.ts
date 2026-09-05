@@ -466,6 +466,7 @@ export interface AdminTranslations {
   navAudit: string;
   navAcademy: string;
   navCertificates: string;
+  navSupport: string;
   backToPanel: string;
   // overview
   ovUsers: string;
@@ -745,6 +746,234 @@ export interface CertificatesTranslations {
   adminBack: string;
 }
 
+/* ---- Support chat (backend/internal/support) ---- */
+
+export type SupportCategory =
+  | "general" | "course" | "lesson" | "assignment" | "quiz" | "code_runner"
+  | "progress" | "certificate" | "account" | "parent_question" | "technical";
+export type SupportStatus = "open" | "waiting_staff" | "waiting_user" | "closed";
+export type SupportMessageType =
+  | "text" | "system" | "staff_note_visible" | "internal_note" | "learning_context";
+
+export interface SupportThreadAbout {
+  studentName: string;
+  courseTitle?: string | null;
+  lessonTitle?: string | null;
+  assignmentName?: string | null;
+}
+
+export interface SupportThread {
+  id: number;
+  subject: string;
+  category: SupportCategory;
+  status: SupportStatus;
+  priority: "normal" | "high";
+  about: SupportThreadAbout;
+  lastMessagePreview: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  assignedToStaff: boolean;
+  createdAt: string;
+  isParentThread?: boolean;
+}
+
+export interface SupportMessage {
+  id: number;
+  body: string;
+  messageType: SupportMessageType;
+  senderRole: "student" | "parent" | "teacher" | "admin";
+  senderName: string;
+  mine: boolean;
+  isInternal: boolean;
+  createdAt: string;
+}
+
+export interface SupportUnread {
+  threads: number;
+  messages: number;
+}
+
+export interface SupportContextCourse {
+  id: number;
+  title: string;
+  slug: string;
+  enrollmentStatus: string;
+  completedLessons: number;
+  totalLessons: number;
+  progressPercent: number;
+  isFocus: boolean;
+}
+
+export interface SupportLearningContext {
+  student: { id: number; name: string; email?: string | null };
+  parent?: { id: number; name: string; email?: string | null };
+  parentLinked?: boolean;
+  courses: SupportContextCourse[];
+  focusCourse?: SupportContextCourse;
+  currentLesson?: string | null;
+  latestQuiz?: {
+    assignmentTitle: string;
+    attempts: number;
+    latestPercent?: number | null;
+    passPercent: number;
+    passed: boolean;
+  };
+  latestSubmission?: {
+    assignmentTitle: string;
+    assignmentType: string;
+    status: string;
+    score?: number | null;
+    submissionId: number;
+  };
+  latestCodeRun?: {
+    assignmentTitle: string;
+    language: string;
+    status: string;
+    kind: string;
+    at: string;
+  };
+  certificate?: {
+    eligible: boolean;
+    issued: boolean;
+    certificateNumber?: string | null;
+    status?: string | null;
+  };
+}
+
+export interface AdminSupportThread {
+  id: number;
+  kind: "student" | "parent";
+  owner: { id: number; name: string; email?: string | null };
+  studentName: string;
+  subject: string;
+  category: SupportCategory;
+  status: SupportStatus;
+  priority: "normal" | "high";
+  courseTitle?: string | null;
+  assignedAdmin?: { id: number; name: string } | null;
+  lastMessagePreview: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  createdAt: string;
+}
+
+export interface AdminSupportThreadDetail extends AdminSupportThread {
+  lessonTitle?: string | null;
+  assignmentName?: string | null;
+  context: SupportLearningContext;
+}
+
+export interface AdminSupportList {
+  data: AdminSupportThread[];
+  meta: { page: number; limit: number; total: number };
+}
+
+/** Optional context carried from a course/lesson/assignment page into a new thread. */
+export interface SupportContextInput {
+  courseId?: number;
+  lessonId?: number;
+  assignmentId?: number;
+  category?: SupportCategory;
+  studentId?: number;
+}
+
+export interface SupportTranslations {
+  // entry points
+  help: string;
+  askCurator: string;
+  contactManager: string;
+  needHelp: string;
+  askAboutAssignment: string;
+  // page
+  title: string;
+  subtitle: string;
+  parentTitle: string;
+  newThread: string;
+  threadsEmpty: string;
+  howCanWeHelp: string;
+  chooseTopic: string;
+  subject: string;
+  subjectPlaceholder: string;
+  category: string;
+  aboutStudent: string;
+  chooseChild: string;
+  send: string;
+  sending: string;
+  composerPlaceholder: string;
+  start: string;
+  starting: string;
+  loadError: string;
+  loading: string;
+  systemPrefix: string;
+  internalNote: string;
+  you: string;
+  staff: string;
+  attachedContext: string;
+  reopenHint: string;
+  // categories
+  catGeneral: string;
+  catCourse: string;
+  catLesson: string;
+  catAssignment: string;
+  catQuiz: string;
+  catCodeRunner: string;
+  catProgress: string;
+  catCertificate: string;
+  catAccount: string;
+  catParentQuestion: string;
+  catTechnical: string;
+  // status
+  stOpen: string;
+  stWaitingStaff: string;
+  stWaitingUser: string;
+  stClosed: string;
+  // quick questions
+  qStudent1: string;
+  qStudent2: string;
+  qStudent3: string;
+  qStudent4: string;
+  qStudent5: string;
+  qParent1: string;
+  qParent2: string;
+  qParent3: string;
+  qParent4: string;
+  // admin
+  adminTitle: string;
+  adminSubtitle: string;
+  adminSearch: string;
+  adminAll: string;
+  adminUnassigned: string;
+  adminAssignedToMe: string;
+  adminAssign: string;
+  adminAssignToMe: string;
+  adminUnassign: string;
+  adminInternalNote: string;
+  adminInternalNotePlaceholder: string;
+  adminAddNote: string;
+  adminClose: string;
+  adminReopen: string;
+  adminReplyPlaceholder: string;
+  adminContext: string;
+  adminPickThread: string;
+  ctxStudent: string;
+  ctxParent: string;
+  ctxLinked: string;
+  ctxNotLinked: string;
+  ctxCourses: string;
+  ctxCurrentLesson: string;
+  ctxLatestQuiz: string;
+  ctxLatestSubmission: string;
+  ctxLatestCodeRun: string;
+  ctxCertificate: string;
+  ctxEligible: string;
+  ctxNotEligible: string;
+  ctxIssued: string;
+  ctxPassed: string;
+  ctxNotPassed: string;
+  ctxOpenCourse: string;
+  ctxAttempts: string;
+}
+
 export interface SitePageHero {
   eyebrow: string;
   title: string;
@@ -800,6 +1029,7 @@ export interface Translations {
   admin: AdminTranslations;
   academy: AcademyTranslations;
   certificates: CertificatesTranslations;
+  support: SupportTranslations;
   site: SiteTranslations;
   hero: HeroTranslations;
   path: PathTranslations;

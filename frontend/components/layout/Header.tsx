@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
 import { useHeaderScroll } from "@/hooks/useHeaderScroll";
+import { useSupportUnread } from "@/hooks/useSupportUnread";
 import { Icon } from "@/lib/icons";
 import { headerNavItems } from "@/data/nav";
 import { ROLE_HOME } from "@/types";
@@ -23,6 +24,14 @@ export function Header() {
   const { user, logout } = useAuth();
   const scrolled = useHeaderScroll();
   const pathname = usePathname();
+  const supportUnread = useSupportUnread();
+
+  const supportHref =
+    user?.role === "admin"
+      ? "/admin/support"
+      : user?.role === "student" || user?.role === "parent"
+        ? "/support"
+        : null;
 
   return (
     <header className={`site-header${scrolled ? " scrolled" : ""}`}>
@@ -48,6 +57,19 @@ export function Header() {
         </nav>
 
         <div className="header-actions">
+          {supportHref && (
+            <Link
+              href={supportHref}
+              className="header-support"
+              aria-label={t.support.help}
+              title={t.support.help}
+            >
+              <Icon name="message-square-code" aria-hidden="true" />
+              {supportUnread > 0 && (
+                <span className="header-support-badge">{supportUnread > 9 ? "9+" : supportUnread}</span>
+              )}
+            </Link>
+          )}
           <LanguageSwitcher ariaLabel="Language selector" />
           <ThemeToggle ariaLabel="Toggle theme" />
           {user ? (

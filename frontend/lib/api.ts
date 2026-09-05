@@ -76,6 +76,13 @@ import type {
   CertificateVerification,
   AdminCertificateRow,
   AdminCertificateList,
+  SupportCategory,
+  SupportStatus,
+  SupportThread,
+  SupportMessage,
+  SupportUnread,
+  AdminSupportThreadDetail,
+  AdminSupportList,
 } from "@/types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
@@ -613,6 +620,93 @@ export const adminCertificatesApi = {
     );
     triggerDownload(blob, `${filenameHint}.pdf`);
   },
+};
+
+/* =========================================================
+   Support chat — learning-aware threads between a student/parent and staff.
+   ========================================================= */
+
+export const supportApi = {
+  unread: () => browserFetch<SupportUnread>("/support/unread-count", { auth: true }),
+  threads: () => browserFetch<SupportThread[]>("/support/threads", { auth: true }),
+  thread: (id: number) => browserFetch<SupportThread>(`/support/threads/${id}`, { auth: true }),
+  messages: (id: number, before?: number) =>
+    browserFetch<SupportMessage[]>(
+      `/support/threads/${id}/messages${before ? `?before=${before}` : ""}`,
+      { auth: true }
+    ),
+  createThread: (body: {
+    subject: string;
+    category: SupportCategory;
+    message: string;
+    courseId?: number;
+    lessonId?: number;
+    assignmentId?: number;
+    studentId?: number;
+  }) =>
+    browserFetch<SupportThread>("/support/threads", {
+      method: "POST",
+      body: JSON.stringify(body),
+      auth: true,
+    }),
+  postMessage: (id: number, bodyText: string) =>
+    browserFetch<SupportMessage>(`/support/threads/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body: bodyText }),
+      auth: true,
+    }),
+  markRead: (id: number) =>
+    browserFetch<unknown>(`/support/threads/${id}/read`, { method: "POST", auth: true }),
+};
+
+export const adminSupportApi = {
+  unread: () => browserFetch<SupportUnread>("/admin/support/unread-count", { auth: true }),
+  list: (params: {
+    status?: string;
+    category?: string;
+    kind?: string;
+    assigned?: string;
+    q?: string;
+    page?: number;
+  }) =>
+    browserFetchRaw<AdminSupportList>(
+      `/admin/support/threads${buildQuery({
+        status: params.status,
+        category: params.category,
+        kind: params.kind,
+        assigned: params.assigned,
+        q: params.q,
+        page: params.page,
+      })}`,
+      { auth: true }
+    ),
+  thread: (id: number) =>
+    browserFetch<AdminSupportThreadDetail>(`/admin/support/threads/${id}`, { auth: true }),
+  messages: (id: number, before?: number) =>
+    browserFetch<SupportMessage[]>(
+      `/admin/support/threads/${id}/messages${before ? `?before=${before}` : ""}`,
+      { auth: true }
+    ),
+  reply: (id: number, bodyText: string, internal = false) =>
+    browserFetch<SupportMessage>(`/admin/support/threads/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body: bodyText, internal }),
+      auth: true,
+    }),
+  assign: (id: number, adminId: number | null) =>
+    browserFetch<AdminSupportThreadDetail>(`/admin/support/threads/${id}/assign`, {
+      method: "POST",
+      body: JSON.stringify({ adminId }),
+      auth: true,
+    }),
+  setStatus: (id: number, status: SupportStatus) =>
+    browserFetch<AdminSupportThreadDetail>(`/admin/support/threads/${id}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+      auth: true,
+    }),
+  markRead: (id: number) =>
+    browserFetch<unknown>(`/admin/support/threads/${id}/read`, { method: "POST", auth: true }),
 };
 
 /* =========================================================

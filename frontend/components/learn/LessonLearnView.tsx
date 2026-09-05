@@ -7,6 +7,7 @@ import { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AssignmentPanel } from "@/components/learn/AssignmentPanel";
+import { AskCuratorButton } from "@/components/support/AskCuratorButton";
 import {
   ApiError,
   completeLesson,
@@ -233,7 +234,27 @@ export function LessonLearnView({
           </aside>
 
           <div className="learn-main">
-            <h1 className="learn-lesson-heading">{lesson.title}</h1>
+            <div className="learn-lesson-topline">
+              <h1 className="learn-lesson-heading">{lesson.title}</h1>
+              {!isAcademy && (
+                <AskCuratorButton
+                  label={t.support.needHelp}
+                  context={{
+                    courseId,
+                    lessonId,
+                    assignmentId: assignments[0]?.id,
+                    category:
+                      assignments[0]?.assignmentType === "quiz"
+                        ? "quiz"
+                        : assignments[0]?.assignmentType === "code"
+                          ? "code_runner"
+                          : assignments.length > 0
+                            ? "assignment"
+                            : "lesson",
+                  }}
+                />
+              )}
+            </div>
             {lesson.description && <p className="learn-lesson-lead">{lesson.description}</p>}
 
             <div className="learn-content">

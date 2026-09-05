@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { getMyCourses, getMyProgress } from "@/lib/api";
+import { AskCuratorButton } from "@/components/support/AskCuratorButton";
 import type { CourseProgress, MyCourseItem } from "@/types";
 
 type State =
@@ -46,6 +47,9 @@ export function StudentDashboard() {
       <div className="container student-dash">
         <span className="eyebrow">{t.student.title}</span>
         <h1 className="student-dash-title">{greeting}</h1>
+        <p className="support-inline-actions">
+          <AskCuratorButton label={t.support.askCurator} />
+        </p>
 
         {state.kind === "loading" && <p className="filter-empty">{t.learn.loading}</p>}
         {state.kind === "error" && <p className="auth-error">{t.learn.loadError}</p>}

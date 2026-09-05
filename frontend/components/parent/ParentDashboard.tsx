@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getParentChildren } from "@/lib/api";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/Button";
+import { AskCuratorButton } from "@/components/support/AskCuratorButton";
 import type { ParentChildListItem } from "@/types";
 
 type State =
@@ -36,6 +37,9 @@ export function ParentDashboard() {
         <span className="eyebrow">{t.family.dashTitle}</span>
         <h1 className="student-dash-title">{greeting}</h1>
         <p className="teacher-meta">{t.family.readOnlyNote}</p>
+        <p className="support-inline-actions">
+          <AskCuratorButton label={t.support.contactManager} />
+        </p>
 
         {state.kind === "loading" && <p className="filter-empty">{t.family.loading}</p>}
         {state.kind === "error" && <p className="auth-error">{t.family.loadError}</p>}

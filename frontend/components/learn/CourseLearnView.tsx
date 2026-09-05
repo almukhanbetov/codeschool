@@ -7,6 +7,7 @@ import { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { ApiError, getAcademyCourseContent, getCourseContent, getCourseProgress } from "@/lib/api";
+import { AskCuratorButton } from "@/components/support/AskCuratorButton";
 import type { CourseContent, CourseProgressDetail, LessonProgressStatus } from "@/types";
 
 type State =
@@ -88,9 +89,14 @@ export function CourseLearnView({
             <span className="eyebrow">{content.course.title}</span>
             <h1 className="student-dash-title">{t.student.myCourses}</h1>
           </div>
-          <Link href={backHref} className="student-viewall">
-            {t.learn.backToDashboard}
-          </Link>
+          <div className="support-inline-actions">
+            {!isAcademy && (
+              <AskCuratorButton context={{ courseId, category: "course" }} label={t.support.askCurator} />
+            )}
+            <Link href={backHref} className="student-viewall">
+              {t.learn.backToDashboard}
+            </Link>
+          </div>
         </div>
 
         <div className="student-overall">

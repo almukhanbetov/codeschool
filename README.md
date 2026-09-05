@@ -153,6 +153,33 @@ passed (all hidden tests), and the final exam passed (≥ 80 %).
 9. **PDF** — *«Скачать сертификат»* → learner **Demo Student**, course title, certificate number, verification code, QR, completion date.
 10. **Public verify** — open `/certificates/verify/<code>` in a private window (no login) → **valid**, learner name, course, number, issued date. No private fields.
 
+## Manager / curator support chat
+
+A learning-aware chat between a **student** or **parent** and CODESCHOOL staff
+(role `admin`). It is *not* a generic support widget — every thread references
+real `course` / `lesson` / `assignment` rows and the manager sees the learner's
+live LMS state (enrollment, progress, latest quiz / submission / code run,
+certificate eligibility) in a read-only context panel — nothing is copied into
+the chat.
+
+- **Student / parent**: the **Помощь** icon in the header, or a contextual
+  *«Спросить куратора» / «Нужна помощь»* link on the dashboard, course page and
+  every lesson (the course/lesson/assignment is attached automatically). Chat at
+  **`/support`** — thread list, quick questions, category, composer (Enter =
+  send, Shift+Enter = newline, 4000-char cap). A parent picks the child a thread
+  is about; the backend rejects any child that is not linked.
+- **Admin**: **`/admin/support`** — three-pane inbox (conversation list ·
+  chat · learning-context panel). Filters by status / category / student vs
+  parent / assigned-to-me / unassigned, full-text search, per-thread + total
+  unread. Reply visibly or add an **internal note** (never sent to the
+  student/parent), **assign** a thread to a staff member, **close / reopen**
+  (assign / close / reopen are written to `admin_audit_log`). A user posting to
+  a closed thread auto-reopens it.
+- Teachers have **no** support-chat access. Unread is tracked per participant
+  (`support_thread_reads`); the header badge polls every 20 s and the open chat
+  every 12 s, pausing when the tab is hidden. Real-time WebSocket delivery and
+  an email "unread reply" fallback are documented future work.
+
 ## API
 
 Full endpoint list, request/response shapes, and the error format are documented in `backend/README.md`. Quick reference:

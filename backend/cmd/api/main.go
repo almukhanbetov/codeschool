@@ -32,6 +32,7 @@ import (
 	"codeschool/backend/internal/quizzes"
 	"codeschool/backend/internal/runs"
 	"codeschool/backend/internal/submissions"
+	"codeschool/backend/internal/support"
 	"codeschool/backend/internal/users"
 )
 
@@ -175,6 +176,13 @@ func run() error {
 	certificatesHandler := certificates.NewHandler(certificatesService)
 	certificatesAdminHandler := certificates.NewAdminHandler(certificatesService)
 
+	// Support chat: learning-aware threads between a student/parent and staff
+	// (role = admin). Read-only learning context is pulled from the LMS tables
+	// on demand; assign/close/reopen are logged to admin_audit_log (adminRepo).
+	supportRepo := support.NewRepository(pool)
+	supportHandler := support.NewHandler(support.NewService(supportRepo))
+	supportAdminHandler := support.NewAdminHandler(support.NewAdminService(supportRepo, adminRepo))
+
 	apiV1 := router.Group("/api/v1")
 	programs.RegisterRoutes(apiV1, programsHandler)
 	levels.RegisterRoutes(apiV1, levelsHandler)
@@ -197,6 +205,11 @@ func run() error {
 	// Certificates are available to any authenticated learner (student or
 	// teacher academy) — ownership, not role, is the boundary.
 	certificates.RegisterLearnerRoutes(protected, certificatesHandler)
+
+	// Support chat — students and parents only (teachers explicitly excluded).
+	supportUsers := protected.Group("")
+	supportUsers.Use(auth.RequireRole("student", "parent"))
+	support.RegisterUserRoutes(supportUsers, supportHandler)
 
 	// Student-only endpoints — valid access token + role == "student".
 	student := protected.Group("")
@@ -243,6 +256,7 @@ func run() error {
 	runs.RegisterAdminRoutes(adminGroup, runsAdminHandler)
 	academy.RegisterAdminRoutes(adminGroup, academyAdminHandler)
 	certificates.RegisterAdminRoutes(adminGroup, certificatesAdminHandler)
+	support.RegisterAdminRoutes(adminGroup, supportAdminHandler)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
