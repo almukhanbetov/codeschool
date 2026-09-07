@@ -1,0 +1,111 @@
+name: Docker images
+
+# Builds the three production images and publishes them to GHCR.
+#   ghcr.io/almukhanbetov/codeschool-backend
+#   ghcr.io/almukhanbetov/codeschool-frontend
+#   ghcr.io/almukhanbetov/codeschool-runner
+#
+# Auth uses the automatic GITHUB_TOKEN (no PAT needed). The token is scoped to
+# this repository and is granted `packages: write` only for this job.
+#
+# This workflow only BUILDS and PUSHES images. It does not deploy — the VPS
+# will later `docker compose -f docker-compose.prod.yml pull` + `up --no-build`
+# (a separate stage).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: docker-images-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  # GHCR namespace. Must be lowercase; `almukhanbetov` already is.
+  OWNER: almukhanbetov
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Backend API. Context is ./backend; no build args.
+          - name: backend
+            image: codeschool-backend
+            context: ./backend
+            file: ./backend/Dockerfile
+            build-args: ""
+
+          # Next.js frontend. NEXT_PUBLIC_* are read in frontend/lib/api.ts and
+          # inlined into the client bundle by `next build`, so they MUST be
+          # supplied at image-build time — a value chosen now is frozen into
+          # the image. We pass production values (never the dev localhost
+          # defaults). Override per environment with repo Variables
+          # (Settings > Secrets and variables > Actions > Variables); these are
+          # public URLs, not secrets.
+          #   NEXT_PUBLIC_API_URL         - server-side (Server Components run
+          #                                 inside the container) -> internal
+          #                                 Docker hostname of the backend.
+          #   NEXT_PUBLIC_BROWSER_API_URL - browser-side fetches -> public API
+          #                                 origin reachable from the user's
+          #                                 machine (Nginx will front it).
+          - name: frontend
+            image: codeschool-frontend
+            context: ./frontend
+            file: ./frontend/Dockerfile
+            build-args: |
+              NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'http://backend:8080/api/v1' }}
+              NEXT_PUBLIC_BROWSER_API_URL=${{ vars.NEXT_PUBLIC_BROWSER_API_URL || 'https://api.codeschool.kz/api/v1' }}
+
+          # Sandboxed code runner. Shares the ./backend context (the runner
+          # binary is backend/cmd/runner); the Dockerfile is Dockerfile.runner.
+          # No build args. Runtime isolation lives in docker-compose.prod.yml,
+          # not in the image — do not change it here.
+          - name: runner
+            image: codeschool-runner
+            context: ./backend
+            file: ./backend/Dockerfile.runner
+            build-args: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: true
+          build-args: ${{ matrix.build-args }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+          # Single-manifest images so `docker compose pull` on the VPS is simple.
+          provenance: false
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

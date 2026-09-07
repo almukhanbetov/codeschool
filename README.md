@@ -75,7 +75,7 @@ the runner are **never published on a host port**, no dev env defaults (every
 required variable must be set or the stack refuses to start), and a persistent
 named volume for Postgres data.
 
-**Not covered here (later stages): VPS, Nginx/TLS, DNS, GitHub Actions, GHCR, backups, monitoring.**
+**Not covered here (later stages): VPS provisioning, Nginx/TLS, DNS, backups, monitoring, and the actual deploy.** Image publishing to GHCR *is* wired up — see below.
 
 ### Required environment
 
@@ -122,6 +122,43 @@ docker compose -f docker-compose.prod.yml --env-file .env down         # stop (k
 
 > **Reset warning:** `down -v` **deletes the `postgres_data` volume** — all
 > users, courses, progress and certificates are lost. Omit `-v` to keep data.
+
+### Container images (GHCR)
+
+`.github/workflows/docker-images.yml` builds and publishes the three production
+images on every **push to `main`** (and on manual **workflow_dispatch**):
+
+| Image | Dockerfile | Context |
+| --- | --- | --- |
+| `ghcr.io/almukhanbetov/codeschool-backend` | `backend/Dockerfile` | `backend/` |
+| `ghcr.io/almukhanbetov/codeschool-frontend` | `frontend/Dockerfile` | `frontend/` |
+| `ghcr.io/almukhanbetov/codeschool-runner` | `backend/Dockerfile.runner` | `backend/` |
+
+Each is pushed with two tags: **`latest`** and the **commit SHA** (`:<git sha>`).
+
+The workflow authenticates with the built-in `GITHUB_TOKEN` (job scope
+`packages: write`) — **no personal access token is needed**. The frontend
+`NEXT_PUBLIC_*` values are baked in at build time (they are inlined into the
+client bundle); production defaults are `http://backend:8080/api/v1`
+(server-side) and `https://api.codeschool.kz/api/v1` (browser-side), overridable
+via repo **Variables** `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_BROWSER_API_URL`.
+
+> On first publish the GHCR packages are **private**. To let the VPS pull them,
+> either make each package public (GitHub → package → Package settings →
+> Change visibility) or give the VPS a read-only token — decided in the deploy
+> stage.
+
+Later, on the VPS (a separate stage — not done here), deployment becomes:
+
+```bash
+# BACKEND_IMAGE / FRONTEND_IMAGE / RUNNER_IMAGE set to the ghcr.io refs in .env
+docker compose -f docker-compose.prod.yml --env-file .env pull
+docker compose -f docker-compose.prod.yml --env-file .env run --rm migrate
+docker compose -f docker-compose.prod.yml --env-file .env up -d --no-build
+```
+
+`docker-compose.prod.yml` keeps its `build:` blocks so the local production
+test (`build`) still works; `--no-build` + `pull` simply ignore them.
 
 ### Ports behind Nginx (later stage)
 
