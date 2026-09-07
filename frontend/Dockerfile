@@ -22,6 +22,10 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# `public/` is optional in Next.js and is not tracked by git when empty, so it
+# may be absent in a clean checkout (e.g. CI). Guarantee it exists so the
+# runtime COPY below is deterministic whether or not there are static assets.
+RUN mkdir -p public
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ARG NEXT_PUBLIC_BROWSER_API_URL
