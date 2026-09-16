@@ -59,18 +59,22 @@ func (r *Repository) GetActive(ctx context.Context, studentID, courseID int64) (
 	return e, nil
 }
 
-// HasActive reports whether the student currently has an active enrollment
-// for the course.
+// HasActive reports whether the student currently has course access — an
+// 'active' or 'completed' enrollment. A student who has finished a course
+// keeps read/practice access to its lessons, quizzes and code assignments;
+// only an explicitly 'cancelled' enrollment (or no enrollment at all) denies
+// access. (Named HasActive for the pre-existing interface/call sites; a
+// rename would touch every consumer package for no behavioral reason.)
 func (r *Repository) HasActive(ctx context.Context, studentID, courseID int64) (bool, error) {
 	var exists bool
 	err := r.pool.QueryRow(ctx, `
 		SELECT EXISTS (
 			SELECT 1 FROM enrollments
-			WHERE student_id = $1 AND course_id = $2 AND status = 'active'
+			WHERE student_id = $1 AND course_id = $2 AND status <> 'cancelled'
 		)
 	`, studentID, courseID).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("check active enrollment: %w", err)
+		return false, fmt.Errorf("check course access: %w", err)
 	}
 	return exists, nil
 }

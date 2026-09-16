@@ -1,0 +1,37 @@
+# STAGE 31 — isolated E2E test overlay. NOT for production use.
+# Usage: docker compose -p codeschool-e2e -f docker-compose.yml -f docker-compose.e2e.override.yml <cmd>
+# Separate project name -> separate network + separate named volume
+# (codeschool-e2e_postgres_data), separate host ports, separate DB name.
+# Does not touch the regular dev stack (project "codeschool") at all.
+services:
+  postgres:
+    environment:
+      POSTGRES_DB: codeschool_e2e
+      POSTGRES_USER: codeschool_e2e
+      POSTGRES_PASSWORD: e2e_local_only_pw
+    ports: !override
+      - "5434:5432"
+
+  migrate:
+    command: ["postgres://codeschool_e2e:e2e_local_only_pw@postgres:5432/codeschool_e2e?sslmode=disable", "up"]
+
+  backend:
+    environment:
+      APP_ENV: development
+      PORT: 8080
+      DATABASE_URL: postgres://codeschool_e2e:e2e_local_only_pw@postgres:5432/codeschool_e2e?sslmode=disable
+      CORS_ALLOWED_ORIGINS: http://localhost:3001
+      JWT_SECRET: e2e-local-test-secret-do-not-use-in-prod
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 720h
+      RUNNER_URL: http://runner:8090
+    ports: !override
+      - "8081:8080"
+
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: http://backend:8080/api/v1
+        NEXT_PUBLIC_BROWSER_API_URL: http://localhost:8081/api/v1
+    ports: !override
+      - "3001:3000"

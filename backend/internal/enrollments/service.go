@@ -51,8 +51,10 @@ func (s *Service) Enroll(ctx context.Context, studentID, courseID int64) (Respon
 	return toResponse(e), nil
 }
 
-// IsEnrolled reports whether the student has an active enrollment for the
-// course. Used by the other student-flow packages to authorize access.
+// IsEnrolled reports whether the student has course access — an active or
+// completed enrollment (not cancelled). Used by the other student-flow
+// packages (progress, submissions, quizzes, runs) to authorize access, so a
+// student who finished a course keeps reviewing/re-running it afterwards.
 func (s *Service) IsEnrolled(ctx context.Context, studentID, courseID int64) (bool, error) {
 	return s.repo.HasActive(ctx, studentID, courseID)
 }

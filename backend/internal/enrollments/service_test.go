@@ -57,8 +57,12 @@ func (f *fakeEnrollRepo) GetActive(_ context.Context, studentID, courseID int64)
 }
 
 func (f *fakeEnrollRepo) HasActive(_ context.Context, studentID, courseID int64) (bool, error) {
-	_, err := f.GetActive(context.Background(), studentID, courseID)
-	return err == nil, nil
+	for _, e := range f.rows {
+		if e.StudentID == studentID && e.CourseID == courseID && e.Status != "cancelled" {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (f *fakeEnrollRepo) StatusFor(_ context.Context, studentID, courseID int64) (string, error) {
@@ -146,5 +150,29 @@ func TestIsEnrolled(t *testing.T) {
 	ok, _ = svc.IsEnrolled(context.Background(), 5, 4)
 	if ok {
 		t.Error("did not expect enrollment in 4")
+	}
+}
+
+// Regression (Stage 31 E2E): a student who finished a course must keep
+// access to review its lessons/quizzes/code assignments — IsEnrolled must
+// stay true once status flips to "completed", not just "active".
+func TestIsEnrolled_CompletedStillGrantsAccess(t *testing.T) {
+	svc, repo := newSvc(3)
+	repo.rows = []Enrollment{{ID: 1, StudentID: 5, CourseID: 3, Status: "completed"}}
+
+	ok, _ := svc.IsEnrolled(context.Background(), 5, 3)
+	if !ok {
+		t.Error("a completed enrollment must still grant course access")
+	}
+}
+
+// A cancelled enrollment must NOT grant access.
+func TestIsEnrolled_CancelledDeniesAccess(t *testing.T) {
+	svc, repo := newSvc(3)
+	repo.rows = []Enrollment{{ID: 1, StudentID: 5, CourseID: 3, Status: "cancelled"}}
+
+	ok, _ := svc.IsEnrolled(context.Background(), 5, 3)
+	if ok {
+		t.Error("a cancelled enrollment must not grant course access")
 	}
 }
