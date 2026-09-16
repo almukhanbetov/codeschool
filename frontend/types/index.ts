@@ -322,6 +322,10 @@ export interface LearnTranslations {
   resetToStarter: string;
   editorLoading: string;
   editorMobileNote: string;
+  videoTitle: string;
+  videoLoadError: string;
+  videoUnsupported: string;
+  videoOpenLink: string;
   editorLanguage: string;
   editorReadOnly: string;
   run: string;

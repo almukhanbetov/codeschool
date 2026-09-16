@@ -7,6 +7,7 @@ import { Icon } from "@/lib/icons";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AssignmentPanel } from "@/components/learn/AssignmentPanel";
+import { LessonVideo } from "@/components/learn/LessonVideo";
 import { AskCuratorButton } from "@/components/support/AskCuratorButton";
 import {
   ApiError,
@@ -264,13 +265,7 @@ export function LessonLearnView({
               ) : (
                 <p className="filter-empty">—</p>
               )}
-              {lesson.videoUrl && (
-                <p>
-                  <a href={lesson.videoUrl} target="_blank" rel="noreferrer">
-                    {lesson.videoUrl}
-                  </a>
-                </p>
-              )}
+              {lesson.videoUrl && <LessonVideo url={lesson.videoUrl} />}
             </div>
 
             <div className="learn-assignments">
