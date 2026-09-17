@@ -24,6 +24,8 @@ export interface AuthTranslations {
   emailOrPhone: string;
   password: string;
   passwordHint: string;
+  showPassword: string;
+  hidePassword: string;
   role: string;
   roleStudent: string;
   roleTeacher: string;

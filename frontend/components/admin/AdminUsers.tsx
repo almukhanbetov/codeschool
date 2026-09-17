@@ -5,6 +5,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
 import { adminApi, ApiError } from "@/lib/api";
 import { EntityManager, type FieldDef } from "@/components/admin/EntityManager";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import type { AdminUser } from "@/types";
 
 const ROLES = ["student", "teacher", "parent", "admin"] as const;
@@ -175,7 +176,7 @@ function PasswordDialog({ user, onClose }: { user: AdminUser; onClose: () => voi
           >
             <label className="admin-field">
               <span>{a.fPassword} *</span>
-              <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
+              <PasswordInput value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
             </label>
             {err && <p className="auth-error">{err}</p>}
             <div className="admin-form-actions">

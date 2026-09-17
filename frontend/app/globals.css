@@ -764,6 +764,19 @@ svg.lucide { display: inline-block; width: 1em; height: 1em; stroke-width: 2; }
 .placeholder-form select:focus-visible { border-color: var(--accent); outline: none; }
 .placeholder-form .btn { width: 100%; margin-top: 8px; }
 .placeholder-form .btn[disabled] { opacity: .6; pointer-events: none; }
+.password-input-wrap { position: relative; display: block; width: 100%; }
+/* !important: guarantees room for the toggle button regardless of which
+   ambient form's `input[type=...]` padding shorthand (higher-specificity,
+   e.g. .admin-field) this wrapper happens to be nested inside. */
+.password-input-wrap input { width: 100%; padding-right: 44px !important; }
+.password-toggle-btn {
+  position: absolute; top: 50%; right: 4px; transform: translateY(-50%);
+  width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 8px; background: transparent; color: var(--text-tertiary);
+  cursor: pointer; padding: 0; transition: color .2s var(--ease), background .2s var(--ease);
+}
+.password-toggle-btn:hover { color: var(--text-primary); background: var(--surface-2); }
+.password-toggle-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .auth-hint { font-weight: 500; color: var(--text-tertiary); font-size: 12px; }
 .auth-error {
   margin: 2px 0 0; padding: 10px 14px; border-radius: 10px; font-size: 13.5px;

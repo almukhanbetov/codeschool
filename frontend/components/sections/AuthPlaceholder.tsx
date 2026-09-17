@@ -7,6 +7,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { PUBLIC_ROLES, ROLE_HOME, type PublicRole } from "@/types";
 
 export function AuthPlaceholder({ variant }: { variant: "login" | "register" }) {
@@ -114,10 +115,9 @@ export function AuthPlaceholder({ variant }: { variant: "login" | "register" }) 
               </div>
               <div>
                 <label htmlFor="password">{a.password}</label>
-                <input
+                <PasswordInput
                   id="password"
                   name="password"
-                  type="password"
                   autoComplete="current-password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
@@ -192,10 +192,9 @@ export function AuthPlaceholder({ variant }: { variant: "login" | "register" }) 
                 <label htmlFor="reg-password">
                   {a.password} <span className="auth-hint">{a.passwordHint}</span>
                 </label>
-                <input
+                <PasswordInput
                   id="reg-password"
                   name="password"
-                  type="password"
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
