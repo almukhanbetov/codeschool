@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AssignmentPanel } from "@/components/learn/AssignmentPanel";
 import { LessonVideo } from "@/components/learn/LessonVideo";
+import { LessonContent } from "@/components/learn/LessonContent";
 import { AskCuratorButton } from "@/components/support/AskCuratorButton";
 import {
   ApiError,
@@ -261,7 +262,7 @@ export function LessonLearnView({
             <div className="learn-content">
               <h3>{t.learn.content}</h3>
               {lesson.content ? (
-                <pre className="learn-content-body">{lesson.content}</pre>
+                <LessonContent text={lesson.content} />
               ) : (
                 <p className="filter-empty">—</p>
               )}

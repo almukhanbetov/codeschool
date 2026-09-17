@@ -834,11 +834,22 @@ svg.lucide { display: inline-block; width: 1em; height: 1em; stroke-width: 2; }
 .learn-lesson-lead { color: var(--text-secondary); margin: 8px 0 24px; }
 .learn-content, .learn-assignments, .learn-complete { margin-bottom: 28px; }
 .learn-content h3, .learn-assignments h3 { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--text-tertiary); margin-bottom: 12px; }
-.learn-content-body {
+.learn-content-body { color: var(--text-primary); font-size: 15px; line-height: 1.7; }
+.learn-content-para { margin: 0 0 14px; }
+.learn-content-heading { margin: 20px 0 8px; font-weight: 800; letter-spacing: -0.01em; }
+h4.learn-content-heading { font-size: 19px; }
+h5.learn-content-heading { font-size: 16.5px; }
+h6.learn-content-heading { font-size: 14.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-tertiary); }
+.learn-content-list { margin: 0 0 14px; padding-left: 22px; }
+.learn-content-list li { margin-bottom: 6px; }
+.learn-content-body code { font-family: var(--font-mono); background: var(--surface-2); padding: 1px 6px; border-radius: 5px; font-size: 0.92em; }
+.learn-content-code {
   font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap;
   background: var(--code-bg); color: var(--text-primary); border: 1px solid var(--border);
-  border-radius: 12px; padding: 16px 18px; overflow-x: auto;
+  border-radius: 12px; padding: 16px 18px; overflow-x: auto; margin: 0 0 14px;
 }
+.learn-content-code code { background: none; padding: 0; }
+.learn-content-img { max-width: 100%; border-radius: 10px; margin: 8px 0; }
 .learn-video {
   position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9;
   background: #000; border-radius: 12px; overflow: hidden; margin-top: 14px;
