@@ -1,0 +1,80 @@
+name: codeschool_mobile
+description: "CODESCHOOL.kz — official mobile client (Android/iOS)."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # state management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # navigation
+  go_router: ^14.8.1
+
+  # http
+  dio: ^5.7.0
+
+  # secure token storage (never SharedPreferences for tokens/passwords)
+  flutter_secure_storage: ^9.2.2
+
+  # non-sensitive local prefs only (language, theme)
+  shared_preferences: ^2.3.3
+
+  # models
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # i18n
+  intl: ^0.20.2
+
+  # icons matching the web's lucide-react set
+  lucide_icons_flutter: ^3.0.9
+
+  # code editor: syntax highlighting + line numbers for the Code Runner screen
+  flutter_highlight: ^0.7.0
+  highlight: ^0.7.0
+
+  # offline detection (test scenario 18)
+  connectivity_plus: ^6.1.0
+
+  # certificate PDF: open with the system viewer, save to app/downloads dir
+  path_provider: ^2.1.5
+  open_filex: ^4.5.0
+  permission_handler: ^11.3.1
+  # Stage 35F: native Share Sheet for a downloaded certificate PDF
+  share_plus: ^10.1.4
+
+  cupertino_icons: ^1.0.8
+
+  # Stage 35E: lesson video (direct file playback only — YouTube/Vimeo open
+  # externally via url_launcher, no WebView/iframe embedding, brief §3/§7)
+  video_player: ^2.9.2
+  url_launcher: ^6.3.1
+
+  # Stage 35E: editable, syntax-highlighted code field for the Code Runner
+  # screen — built on the already-present flutter_highlight/highlight
+  code_text_field: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.9.0
+  riverpod_generator: ^2.6.3
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  generate: true

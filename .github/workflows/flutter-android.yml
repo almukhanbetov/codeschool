@@ -1,0 +1,80 @@
+name: Flutter Android
+
+# Verifies and builds the Flutter mobile app (flutter/). Separate from
+# `docker-images.yml`, which builds the backend/frontend/runner Docker
+# images — this workflow never touches Docker, Compose, or the VPS.
+#
+# Path filters only limit the *push*/*pull_request* triggers below; they
+# cannot make `docker-images.yml` skip Flutter-only changes (it has its own
+# unconditional `push: branches: [main]` trigger with no path filter, and per
+# instructions this workflow does not modify it). See STAGE35H_ANDROID_API_APK_REPORT.md
+# for the proposal to add a path filter there, pending separate approval.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "flutter/**"
+      - ".github/workflows/flutter-android.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "flutter/**"
+      - ".github/workflows/flutter-android.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: flutter-android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: flutter
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.0"
+          channel: "stable"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      # NOTE: release build is currently signed with the Flutter debug
+      # keystore (see android/app/build.gradle.kts) because no production
+      # signing config has been set up yet. This APK is for internal
+      # testing/QA only and is NOT suitable for Play Store distribution.
+      # No secrets are used or required for this build.
+      - name: Build release APK
+        run: flutter build apk --release --dart-define=API_BASE_URL=https://api.codeschool.kz/api/v1
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeschool-android-apk
+          path: flutter/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
+          if-no-files-found: error
